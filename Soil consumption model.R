@@ -1,3 +1,7 @@
+
+### THis is a a practice for GitHub # Hi Annanda!
+
+
 ######### Simple soil model ##############
 
 ### Always calculate for ONE hand
