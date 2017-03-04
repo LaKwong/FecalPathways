@@ -2,6 +2,8 @@
 # normal probably fits pretty well, but must be bounded at 0 because neither SA nor conc or load can be neg
 
 
+### Exclude obj mouthing?
+
 ######### Simple soil model ##############
 
 ### Always calculate for ONE hand
@@ -24,6 +26,10 @@ library(logspline)
 library(plyr)
 library(dplyr)
 #library(compositions)
+
+ndvar <- 101 #1001, 10001
+ndunc <- 10
+seed <- 123
 
 # Load soil mass data
 
@@ -125,6 +131,41 @@ soilMass.wide <- soilMass.wide[, c("hh", "surveyDate.soil.child.7", "soilOneHand
                                    "surveyDate.soil.mom.7", "soilOneHand.mg.mom.7",
                                    "surveyDate.soil.mom.8", "soilOneHand.mg.mom.8")]
 
+
+### Measured soil load on children's hands
+soil.C.load <- data.frame(combine(soilMass.wide$soilOneHand.mg.child.7, soilMass.wide$soilOneHand.mg.child.8))
+names(soil.C.load) <- "soilOneHand.mg.child"
+soil.C.load <- soil.C.load[!is.na(soil.C.load$soilOneHand.mg.child),]
+qplot(soil.C.load, geom = "histogram", binwidth = 1)
+qplot(log(soil.C.load), geom = "histogram", binwidth = 0.1)
+
+# ### No distribution fits so instead I'll draw from the empirical data
+# soil.C.load.dist <- fitdist(soil.C.load, "lnorm", method = "mle")
+# soil.C.load.mcstoc <- mcstoc(rlnorm, type="V", meanlog = soil.C.load.dist$estimate[[1]], sdlog = soil.C.load.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+
+soil.C.load.mcdata <- mcdata(sample(soil.C.load, size=ndvar(), replace=TRUE),type="V")
+
+# p0 = qplot(soil.C.load, geom = 'blank') +   
+#   geom_line(aes(y = ..density.., colour = 'Empirical'), stat = 'density') +  
+#   stat_function(fun = dnorm, aes(colour = 'Normal')) +                       
+#   geom_histogram(aes(y = ..density..), alpha = 0.4) +                        
+#   scale_colour_manual(name = 'Density', values = c('red', 'blue')) + 
+#   theme(legend.position = c(0.85, 0.85))
+# 
+# print(p0)
+
+### Measured soil load on mom's hands
+soil.M.load <- data.frame(combine(soilMass.wide$soilOneHand.mg.mom.7, soilMass.wide$soilOneHand.mg.mom.8))
+names(soil.M.load) <- "soilOneHand.mg.mom"
+soil.M.load <- soil.M.load[!is.na(soil.M.load$soilOneHand.mg.mom),]
+qplot(soil.M.load, geom = "histogram", binwidth = 1)
+
+# ### No distribution fits so instead I'll draw from the empirical data
+# soil.M.load.dist <- fitdist(soil.M.load, "lnorm", method = "mle")
+
+soil.M.load.mcdata <- mcdata(sample(soil.M.load, size=ndvar(), replace=TRUE),type="V")
+
+
 ###################################################################
 ###################################################################
 
@@ -168,99 +209,96 @@ anth.soilMass.wide %>%
 ### Maybe DHS data? - nope, birthweights only --> Ask Steve, kishor, mahbub?
 
 ######### For now, let's use the surface area of the oldest children in the WASHB dataset
+# Hand SA distribution for WASHB children OVER 30 months at endline
 ## There are only 7 Control arm kids > 30 months at WASHB Endline
-## Since there are only 7 kids, we'll just use the mean for now
 anth.C.over30.hand.SA.WASHB <- anth.soilMass.wide %>%
   filter(survey.age.mo.end > 30) %>%
   select(C.hand.SA.end)
+qplot(anth.C.over30.hand.SA.WASHB$C.hand.SA.end, geom = "histogram", binwidth = 1)
 
-C.over30.hand.SA.WASHB <- anth.C.over30.hand.SA.WASHB %>%
-  summarise(over30.hand.SA.mean = mean(C.hand.SA.end))
+# # Dist doesn't fit so use empirical
+# anth.C.over30.hand.SA.WASHB.dist <- fitdist(anth.C.over30.hand.SA.WASHB$C.hand.SA.end, "norm", method = "mle")
+# C.over30.hand.SA.WASHB.mcstoc <- mcstoc(rweibull, type="V", shape = anth.C.over30.hand.SA.WASHB.dist$estimate[[1]], scale = anth.C.over30.hand.SA.WASHB.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
-# Would be better if we can get month-specific est for hand surface area, but right now we can't so just average the mass of soil on child's hand over rounds 7 and 8
-soilMass.wide$soilOneHand.mg.child.mean <- rowMeans(soilMass.wide[, c("soilOneHand.mg.child.7", "soilOneHand.mg.child.8")], na.rm = TRUE)
-
-# Calc grams soil/cm2 using SA from WASHB data
-soilMass.wide$C.hand.SA.est <- C.over30.hand.SA.WASHB[[1]]
-soilMass.wide$C.soil.conc.mg.cm2 <- soilMass.wide$soilOneHand.mg.child.mean/soilMass.wide$C.hand.SA.est
+anth.C.over30.hand.SA.WASHB.mcdata <- mcdata(sample(anth.C.over30.hand.SA.WASHB$C.hand.SA.end, size=ndvar(), replace=TRUE),type="V")
 
 
-######################################################################################
-## We CAN use the WASHB anthropometry measurements for mothers. 
-## Use endline values ONLY FOR THE MOTHERS WHOSE HANDS WERE SAMPLED, which are closer in date to the when soil on hands were measured
+# Hand SA distribution for WASHB mothers at endline
+anth.M.hand.SA.WASHB.end <- anth.soilMass.wide %>%
+  select(M.hand.SA.end) %>%
+  filter(M.hand.SA.end < 1000) ## Filter out the unreasonable hand SA values - there are not outliers but rather mistakes with height or weight measurement
+qplot(anth.M.hand.SA.WASHB.end$M.hand.SA.end, geom = "histogram", binwidth = 1)
 
-# # For the hand SA of all mothers in the WASHB dataset
-# boxplot(anth.soilMass.wide[,"M.hand.SA.end"])  # clearly there are outliers (all values above 1000)
+# Dist DOES fit so use empirical
+anth.M.hand.SA.WASHB.end.dist <- fitdist(anth.M.hand.SA.WASHB.end$M.hand.SA.end, "norm", method = "mle")
+M.hand.SA.WASHB.end.mcstoc <- mcstoc(rnorm, type="V", mean = anth.M.hand.SA.WASHB.end.dist$estimate[[1]], sd = anth.M.hand.SA.WASHB.end.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+
+############## Est soil concentration on hands based on measured soil load for RO1 children and mothers and WASHB data for hand surface area ################
+soil.C.conc <- soil.C.load.mcdata / anth.C.over30.hand.SA.WASHB.mcdata
+soil.M.conc <- soil.M.load.mcdata / M.hand.SA.WASHB.end.mcstoc
+
+
+
+##### To estimate the age month-specific load on the hands of WASHB kids #####
+## Determine the month-specific hand surface area distribution for kids
+C.hand.SA.WASHB <- anth.soilMass.wide %>%
+  #select(survey.age.mo.mid, C.hand.SA.mid, survey.age.mo.end, C.hand.SA.end) %>%
+  unite(mid, survey.age.mo.mid, C.hand.SA.mid) %>%
+  unite(end, survey.age.mo.end, C.hand.SA.end) %>%
+  select(hh, mid, end) %>%
+  gather(key = round, value = age_hand.SA, mid, end) %>%
+  separate(age_hand.SA, c("age", "C.hand.SA"), sep = "_", convert = TRUE) %>%
+  mutate(age.mo = floor(age)) %>%
+  select(hh, age.mo, C.hand.SA) %>%
+  filter(!is.na(C.hand.SA))
+
+scatter.smooth(C.hand.SA.WASHB$age, C.hand.SA.WASHB$C.hand.SA)
+
+# ############# How about instead of making a distribution, you just use the empricial data
+# # For the month-specific distributions, can I make normal/weibull for each month?
+# C.hand.SA.WASHB.f6.dist <- fitdist(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6 & !is.na(C.hand.SA.WASHB$age.mo), "C.hand.SA"], "norm", method = "mle")
+# C.hand.SA.WASHB.o24.dist <- fitdist(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24 & !is.na(C.hand.SA.WASHB$age.mo), "C.hand.SA"], "norm", method = "mle")
 # 
-# anth.M.hand.SA <- anth.soilMass.wide %>%
-#   select(M.hand.SA.end) %>%
-#   filter(M.hand.SA.end < 1000)
+# hand.SA.find.dist <- function(data, x, dist) {fitdist(data[data$age.mo == x, "C.hand.SA"], dist, method = "mle")}
 # 
-# # Fitting of the distribution ' norm ' by maximum likelihood 
-# # Parameters:
-# #   estimate Std. Error
-# # mean 322.94354  0.8323223
-# # sd    27.04727  0.5885408
+# for(i in c(6:13, 18:23)){ #max(HM.SM$age)
+#   assign(paste("C.hand.SA.WASHB.", i, sep = ""), hand.SA.find.dist(C.hand.SA.WASHB, i, "norm"))
+# }
 
-# For only the mothers in the WASHB dataset whose hands were sampled for soil
-boxplot(anth.soilMass.wide[anth.soilMass.wide$hh %in% soilMass.wide$hh,"M.hand.SA.end"])  # clearly there are outliers (all values above 1000)
 
-anth.M.hand.SA <- anth.soilMass.wide %>%
-  filter(hh %in% soilMass.wide$hh) %>% 
-  select(M.hand.SA.end)
+for(i in c(4:40)){ #max(HM.SM$age)
+  assign(paste("C.hand.SA.WASHB.", i, sep = ""), C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"])
+  assign(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = ""), mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V"))
+}
 
-M.hand.SA.end.dist <- fitdist(anth.M.hand.SA$M.hand.SA.end, "norm", method = "mle")
-# mean = M.hand.SA.end.dist$estimate[1] 
-# sd = M.hand.SA.end.dist$estimate[2] 
 
-# Fitting of the distribution ' norm ' by maximum likelihood 
-# Parameters:
-#   estimate Std. Error
-# mean 314.5447   4.412041
-# sd    25.7264   3.119784
+## Determine the all-ages hand surface area distribution for mothers
+M.hand.SA.WASHB <- anth.soilMass.wide %>%
+  select(hh, M.hand.SA.mid, M.hand.SA.end) %>%
+  gather(key = round, value = M.hand.SA, M.hand.SA.mid, M.hand.SA.end) %>%
+  select(hh, M.hand.SA) %>%
+  filter(M.hand.SA < 1000 & !is.na(M.hand.SA))
 
-# Average the mass of soil on mother's hand over rounds 7 and 8
-soilMass.wide$soilOneHand.mg.mom.mean <- rowMeans(soilMass.wide[, c("soilOneHand.mg.mom.7", "soilOneHand.mg.mom.8")], na.rm = TRUE)
+qplot(M.hand.SA.WASHB$M.hand.SA, geom = "histogram", binwidth = 10)
 
-# Calc grams soil/cm2 using SA from WASHB data
-soilMass.wide$M.hand.SA.random <- rnorm(nrow(soilMass.wide), mean = M.hand.SA.end.dist$estimate[1], sd = M.hand.SA.end.dist$estimate[2] )
-soilMass.wide$M.soil.conc.mg.cm2 <- soilMass.wide$soilOneHand.mg.mom.mean/soilMass.wide$M.hand.SA.random
+# Dist DOES fit so use empirical
+M.hand.SA.WASHB.dist <- fitdist(M.hand.SA.WASHB$M.hand.SA, "norm", method = "mle")
+M.hand.SA.WASHB.mcstoc <- mcstoc(rnorm, type="V", mean = M.hand.SA.WASHB.dist$estimate[[1]], sd = M.hand.SA.WASHB.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+#M.hand.SA.WASHB.mcdata <- mcdata(sample(M.hand.SA.WASHB$M.hand.SA, size=ndvar(), replace=TRUE),type="V")
 
 ################## Calc distribution of loading (mg) ###########
+##### Est load on hands of all WASHB children using the est soil concentration on RO1 hands and the dist of hand SA of the WASHB hands
 # Probablistic multiply by conc (g/cm2) by SA (cm2) of observed children to get est load g soil 
-# -> If this method then need to # Determine a hand size distribution for children 3-6 mo old, 6-12, 12-24, 24-36 months old
+# Age month-specific for children
+for(i in c(4:40)){
+  assign(paste("C.soil.load.", i, sep = ""), soil.C.conc * get(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = "")))
+}
 
-C.hand.conc.mg.cm2.dist <- fitdist(soilMass.wide$C.soil.conc.mg.cm2, "norm", method = "mle")
-M.hand.conc.mg.cm2.dist <- fitdist(soilMass.wide$M.soil.conc.mg.cm2, "norm", method = "mle")
-
-# Use same conc mg/cm2 on hands for midline and endline load calc because assuming conc does not change with age
-anth.soilMass.wide$C.hand.conc.random <- rnorm(nrow(anth.soilMass.wide), mean = C.hand.conc.mg.cm2.dist$estimate[1], sd = C.hand.conc.mg.cm2.dist$estimate[2] )
-anth.soilMass.wide$C.hand.load.mid <- anth.soilMass.wide$C.hand.SA.mid * anth.soilMass.wide$C.hand.conc.random
-anth.soilMass.wide$C.hand.load.end <- anth.soilMass.wide$C.hand.SA.end * anth.soilMass.wide$C.hand.conc.random
-
-qplot(anth.soilMass.wide$C.hand.conc.random, geom = "histogram", binwidth = 0.005)
-qplot(anth.soilMass.wide$M.hand.conc.random, geom = "histogram", binwidth = 0.005)
-
-anth.soilMass.wide$M.hand.conc.random <- rnorm(nrow(anth.soilMass.wide), mean = M.hand.conc.mg.cm2.dist$estimate[1], sd = M.hand.conc.mg.cm2.dist$estimate[2] )
-anth.soilMass.wide$M.hand.load.mid <- anth.soilMass.wide$M.hand.SA.mid * anth.soilMass.wide$M.hand.conc.random
-anth.soilMass.wide$M.hand.load.end <- anth.soilMass.wide$M.hand.SA.end * anth.soilMass.wide$M.hand.conc.random
+M.soil.load <- soil.M.conc * M.hand.SA.WASHB.mcstoc
 
 
-qplot(anth.soilMass.wide$C.hand.load.end, geom="histogram", binwidth = 1, xlim = c(-25, 80))
-qplot(anth.soilMass.wide$M.hand.load.end, geom="histogram", binwidth = 1, xlim = c(-25, 80))
 
-# scatter plot of child age (months) vs load on one hand (mg)
-C.load.mid <- anth.soilMass.wide[, c("survey.age.mo.mid", "C.hand.load.mid")]
-names(C.load.mid) <- c("age", "load")
-C.load.end <- anth.soilMass.wide[, c("survey.age.mo.end", "C.hand.load.end")]
-names(C.load.end) <- c("age", "load")
-
-C.load.age <- rbind(C.load.mid, C.load.end)
-scatter.smooth(C.load.age)
-
-### Doesn't make sense to track mother age with loading - she is a month older but probably not grown
-
-
+######################## Add Hand-to-mouth contact data ################################
 # Load HM frequencies and soil ingestion frequencies for each individual, not hh
 ## Structured Observation 
 ### Using data from all arms, justify by not sig diff (Kwong, 2016)
@@ -273,9 +311,9 @@ names(SO.allObs)
 SO.HM.SM <- SO.allObs %>%
   filter(location == 3) %>%
   mutate(round = "so.1", Mouth_hands_d = NA, Mouth_hands_nd = NA) %>%
-  select(round, participant_id,  age_SO_mo, age_SO_group, hand_m_tot_freq, Mouth_hands_d, Mouth_hands_nd, soil_m_tot_freq, soil_h_m_tot_freq)
-  
-names(SO.HM.SM) <- c("round", "hh", "age", "age.group", "HM", "HM_d", "HM_nd", "SM", "SHM")
+  select(participant_id,  round, age_SO_mo, age_SO_group, hand_m_tot_freq, Mouth_hands_d, Mouth_hands_nd, soil_m_tot_freq, soil_h_m_tot_freq)
+
+names(SO.HM.SM) <- c("hh", "round", "age", "age.group", "HM", "HM_d", "HM_nd", "SM", "SHM")
 
 # ############ SO Data if I want to use the age group ################3
 # ## From SO of 149 kids
@@ -300,14 +338,15 @@ names(SO.HM.SM) <- c("round", "hh", "age", "age.group", "HM", "HM_d", "HM_nd", "
 vo123.objclass.base <- read.csv("C:/Users/Laura Kwong/Box Sync/VO R123/vo.11.objclass.csv")
 VO.HM.SM <- vo123.objclass.base %>%
   filter(actobj.class %in% c("Mouth_hands", "Mouth_hands_d", "Mouth_hands_nd", "Mouth_soil")) %>%
-  select(vo.num, hh, age.vo, age.vo.group, actobj.class, freq) %>%
+  select(hh, vo.num, age.vo, age.vo.group, actobj.class, freq) %>%
   spread(actobj.class, freq) %>%
   mutate(soil_h_m_tot_freq = NA)
 
-names(VO.HM.SM) <- c("round", "hh", "age", "age.group", "HM", "HM_d", "HM_nd", "SM", "SHM")
+names(VO.HM.SM) <- c("hh", "round", "age", "age.group", "HM", "HM_d", "HM_nd", "SM", "SHM")
 
 
-HM.SM <- rbind(SO.HM.SM, VO.HM.SM)
+HM.SM <- rbind(SO.HM.SM, VO.HM.SM) %>%
+  arrange(age, round, hh)
 
 scatter.smooth(HM.SM[,c("age", "HM")])
 scatter.smooth(HM.SM[,c("age", "SM")])
@@ -325,67 +364,122 @@ scatter.smooth(HM.SM[,c("age", "SM")])
 # But make wieull dist for children <6 mo because not many data point and this is the cutoff for exclusive breatfeeding - should have very little hands_d here. 
 # And make a weibull dist for children >= 24 mo because lack data and expect more similar after this age
 
- ################### Don't have the data to show more similar from 24-36 mo old
+################### Don't have the data to show more similar from 24-36 mo old
 
 # Alternative methods:
 # Create a weibull distriution for each age.group and apply to each age group 
 # Create a weibull distriution for each age.group and apply to each age month
 # Assign the median or median freq by age.mo 
 
-HM.SM.f6.dist <- fitdist(HM.SM[HM.SM$age < 6, "HM"], "weibull", method = "mle")
-HM.SM.o24.dist <- fitdist(HM.SM[HM.SM$age >= 24, "HM"], "weibull", method = "mle")
-
-# For the month-specific distributions, can I make weibull for each month?
-HM.SM.dist <- function(x) {fitdist(HM.SM[HM.SM$age == x, "HM"], "weibull", method = "mle")}
-
-for(i in 6:23){ #max(HM.SM$age)
-  assign(paste("HM.SM.", i, ".dist", sep = ""), HM.SM.dist(i))
-}
-
-anth.soilMass.wide <- anth.soilMass.wide %>%
-  select(-c(X.1, X)) %>%
-  filter(!is.na(hh))
-
-str(anth.soilMass.wide)
-anth.soilMass.wide$HM.freq.mid <- NA
-anth.soilMass.wide$HM.freq.end <- NA
-
-# For some reason there is an NA row that is produced in the anth.soilMass.wide file that I cannot figure out whenceforth it comes 
-# or how to get rid of it except by using & !is.na(survey.age.mo.mid)
-attach(anth.soilMass.wide)
-
-for(i in 6:23){
-  anth.soilMass.wide[survey.age.mo.mid > i & survey.age.mo.mid < (i + 1) & !is.na(survey.age.mo.mid), "HM.freq.mid"] <- rweibull(nrow(anth.soilMass.wide[survey.age.mo.mid > i & survey.age.mo.mid < (i + 1) & !is.na(survey.age.mo.mid),]), shape = get(paste("HM.SM.", i, ".dist", sep = ""))$estimate[[1]], scale = get(paste("HM.SM.", i, ".dist", sep = ""))$estimate[[2]] )
-  anth.soilMass.wide[survey.age.mo.end > i & survey.age.mo.end < (i + 1) & !is.na(survey.age.mo.mid), "HM.freq.end"] <- rweibull(nrow(anth.soilMass.wide[survey.age.mo.end > i & survey.age.mo.end < (i + 1) & !is.na(survey.age.mo.mid),]), shape = get(paste("HM.SM.", i, ".dist", sep = ""))$estimate[[1]], scale = get(paste("HM.SM.", i, ".dist", sep = ""))$estimate[[2]] )
-}
-
-# for(i in 6:23){
-#   anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.mid == i, "HM.freq.mid"] <- rweibull(nrow(anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.mid == i,]), shape = get(paste("HM.SM.", i, ".dist", sep = ""))$estimate[[1]], scale = get(paste("HM.SM.", i, ".dist", sep = ""))$estimate[[2]] )
-#   anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.end == i, "HM.freq.end"] <- rweibull(nrow(anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.end == i,]), shape = get(paste("HM.SM.", i, ".dist", sep = ""))$estimate[[1]], scale = get(paste("HM.SM.", i, ".dist", sep = ""))$estimate[[2]] )
+# ## For all hand_mouthing (use for round SO)
+# HM.SM.f6.dist <- fitdist(HM.SM[HM.SM$age < 6, "HM"], "weibull", method = "mle")
+# HM.SM.o24.dist <- fitdist(HM.SM[HM.SM$age >= 24, "HM"], "weibull", method = "mle")
+# 
+# # # For the month-specific distributions, can I make weibull for each month?
+# find.dist <- function(data, x, dist) {fitdist(data[data$age == x, "HM"], dist, method = "mle")}
+# 
+# for(i in 6:23){ #max(HM.SM$age)
+#   assign(paste("HM.SM.", i, ".dist", sep = ""), find.dist(HM.SM, i, "weibull"))
+#   assign(paste("HM.SM.", i, ".mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM"], size = ndvar(), replace = TRUE), type = "V"))
 # }
 
-# 45 children < 6 mo at midline
-anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.mid < 6 & !is.na(survey.age.mo.mid), "HM.freq.mid"] <- rweibull(nrow(anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.mid < 6 & !is.na(survey.age.mo.mid), ]), shape = HM.SM.f6.dist$estimate[[1]], scale = HM.SM.f6.dist$estimate[[2]] )
-# 0 children < 6 mo at endline
-anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.end < 6 & !is.na(survey.age.mo.end), "HM.freq.end"] <- rweibull(nrow(anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.end < 6 & !is.na(survey.age.mo.end), ]), shape = HM.SM.f6.dist$estimate[[1]], scale = HM.SM.f6.dist$estimate[[2]] )
 
-# 1 child >= 24 mo at midline
-anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.mid >= 24 & !is.na(survey.age.mo.mid), "HM.freq.mid"] <- rweibull(nrow(anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.mid >= 24 & !is.na(survey.age.mo.mid), ]), shape = HM.SM.o24.dist$estimate[[1]], scale = HM.SM.o24.dist$estimate[[2]] )
-#210 children >= 24 mo at endline
-anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.end >= 24 & !is.na(survey.age.mo.end), "HM.freq.end"] <- rweibull(nrow(anth.soilMass.wide[anth.soilMass.wide$survey.age.mo.end >= 24 & !is.na(survey.age.mo.end), ]), shape = HM.SM.o24.dist$estimate[[1]], scale = HM.SM.o24.dist$estimate[[2]] )
-
-detach(anth.soilMass.wide)
-
-##################### Multiple HM freq by amt of soil on hands ######################
-REally you should be using mc2d for this rather than assigning in an excel sheet. /......
+#### Do NOT calc HM_d_child, HM_d_mother, HM_nd_child, HM_nd_mother on only the children in the video obs 
+## Instead use HM * MONTH-SPECIFIC % HM_d_child, HM * MONTH-SPECIFIC % HM_d_mother, etc to estimate these values for all Structured observation kids. 
+# Problem will be that ages don't align
 
 
+## For now, use HM ONLY and do 25% mom, 75% child just to get an idea of the magnitude
+## Probably best I can do is split by age group and take mean % d/nd, child/mom
+
+Frac_HM_dueTo_Child <- 0.75
+###########################
+### Must change to reflect that most mom HM contacts do not have recontam so really only want number of indep feeding events
+Frac_HM_dueTo_Mom <- 0.25 
+####################
+
+
+HM.SM$HM_child <- HM.SM$HM * Frac_HM_dueTo_Child
+HM.SM$HM_mom <- HM.SM$HM * Frac_HM_dueTo_Mom
+
+## For all HM_child
+HM.SM.f6.child.dist <- fitdist(HM.SM[HM.SM$age < 6, "HM_child"], "weibull", method = "mle")
+HM.SM.f6.child.mcstoc <- mcstoc(rweibull, type="V", shape = HM.SM.f6.child.dist$estimate[[1]], scale = HM.SM.f6.child.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.SM.o24.child.dist <- fitdist(HM.SM[HM.SM$age >= 24, "HM_child"], "weibull", method = "mle")
+HM.SM.o24.child.mcstoc <- mcstoc(rweibull, type="V", shape = HM.SM.o24.child.dist$estimate[[1]], scale = HM.SM.o24.child.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+
+# # For the month-specific distributions, can I make weibull for each month?
+find.dist <- function(data, x, dist) {fitdist(data[data$age == x, "HM_child"], dist, method = "mle")}
+
+for(i in 6:23){ #max(HM.SM$age)
+  assign(paste("HM.SM.", i, ".child.dist", sep = ""), find.dist(HM.SM, i, "weibull"))
+  assign(paste("HM.SM.", i, ".child.mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM_child"], size = ndvar(), replace = TRUE), type = "V"))
+}
+
+## For all HM_mom
+HM.SM.f6.mom.dist <- fitdist(HM.SM[HM.SM$age < 6, "HM_mom"], "weibull", method = "mle")
+HM.SM.f6.mom.mcstoc <- mcstoc(rweibull, type="V", shape = HM.SM.f6.mom.dist$estimate[[1]], scale = HM.SM.f6.mom.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.SM.o24.mom.dist <- fitdist(HM.SM[HM.SM$age >= 24, "HM_mom"], "weibull", method = "mle")
+HM.SM.o24.mom.mcstoc <- mcstoc(rweibull, type="V", shape = HM.SM.o24.mom.dist$estimate[[1]], scale = HM.SM.o24.mom.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+
+# # For the month-specific distributions, can I make weibull for each month?
+find.dist <- function(data, x, dist) {fitdist(data[data$age == x, "HM_mom"], dist, method = "mle")}
+
+for(i in 6:23){ #max(HM.SM$age)
+  assign(paste("HM.SM.", i, ".mom.dist", sep = ""), find.dist(HM.SM, i, "weibull"))
+  assign(paste("HM.SM.", i, ".mom.mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM_mom"], size = ndvar(), replace = TRUE), type = "V"))
+}
+
+#################### Combine load_child/load_mom with HM_child/HM_mom with mouth SA dist, removal efficiency dist
+
+#HF	Child own hand fracion mouthed/event	-	day	beta	3.7	25				Zartarian 2005 as presented in Ozkaynak 2011	Zartarian 2005
+HF.child.mcstoc <- mcstoc(rbeta, type="V", shape1 = 3.7, shape2 = 25, rtrunc=TRUE, linf=0)
+
+# Children will mouth a smaller portion of mom's hand than of own hand 
+############### I have no idea how much smaller, lets just say 50% less so if they mouth 12% of own hand, only mouth 6% of mom's hand
+Frac_HF_for_mom <- 0.5
+HF.mom.mcstoc <- HF.mcstoc * Frac_HF_for_mom
+
+# HMRE	Hand mouthing removal(transfer) eff.	-	day	beta	2	8				Cohen Hubal 2008 as presented in Ozkaynak 2011
+HMRE.mcstoc <- mcstoc(rbeta, type="V", shape1 = 2, shape2 = 8, rtrunc=TRUE, linf=0)
+
+### For now, for children under 6 mo, use the soil loading est for children 4 mo old
+C.soil.simple.f6 <- ((C.soil.load.4 * HM.SM.f6.child.mcstoc * HF.child.mcstoc) + (M.soil.load * HM.SM.f6.mom.mcstoc * HF.mom.mcstoc))  * HMRE.mcstoc
+C.soil.simple.o24 <- ((C.soil.load.4 * HM.SM.o24.child.mcstoc * HF.child.mcstoc) + (M.soil.load * HM.SM.o24.mom.mcstoc * HF.mom.mcstoc))  * HMRE.mcstoc
+
+for(i in 6:23){
+  assign(paste("C.soil.simple.", i, sep = ""), ((get(paste("C.soil.load.", i, sep = "")) * get(paste("HM.SM.", i, ".child.mcdata", sep = ""))) + 
+                                                  (M.soil.load * get(paste("HM.SM.", i, ".mom.mcdata", sep = "")))) * HF.mcstoc * HMRE.mcstoc)
+  #C.soil.simple.10 <- ((C.soil.load.10 * HM.SM.10.child.mcdata) + (M.soil.load * HM.SM.10.mom.mcdata)) * HF.mcstoc * HMRE.mcstoc
+}
+
+########## Eval the mc model ###########
+soil.test1 <- mcmodel({ 
+  C.soil.simple.f6 <- ((C.soil.load.4 * HM.SM.f6.child.mcstoc * HF.child.mcstoc) + (M.soil.load * HM.SM.f6.mom.mcstoc * HF.mom.mcstoc))  * HMRE.mcstoc
+  # C.soil.simple.o24 <- ((C.soil.load.4 * HM.SM.o24.child.mcstoc) + (M.soil.load * HM.SM.o24.mom.mcstoc)) * HF.mcstoc * HMRE.mcstoc
+  # 
+  # for(i in 6:23){
+  #   assign(paste("C.soil.simple.", i, sep = ""), ((get(paste("C.soil.load.", i, sep = "")) * get(paste("HM.SM.", i, ".child.mcdata", sep = ""))) + 
+  #                                                   (M.soil.load * get(paste("HM.SM.", i, ".mom.mcdata", sep = "")))) * HF.mcstoc * HMRE.mcstoc)
+  #   #C.soil.simple.10 <- ((C.soil.load.10 * HM.SM.10.child.mcdata) + (M.soil.load * HM.SM.10.mom.mcdata)) * HF.mcstoc * HMRE.mcstoc
+  # }
+  res <- mc(C.soil.load.4, HM.SM.f6.child.mcstoc, HF.child.mcstoc, M.soil.load, HM.SM.f6.mom.mcstoc, HF.mom.mcstoc, HMRE.mcstoc, C.soil.simple.f6)
+})
+
+expr <- soil.test1
+res <- evalmcmod(expr, nsv=ndvar(), nsu=ndunc(), seed=seed)
+plot(res, prec = 0.001, stat = c("median", "mean"), lim = c(0.025, 0.25, 0.75, 0.975), na.rm =
+       TRUE, griddim = NULL, xlab = NULL, ylab = "Fn(x)", main = "", draw = TRUE, paint = TRUE)
+tor.res <- tornado(res)
+plot(tor.res)
+summary(res)
+hist(res)
 
 
 ###### Translate from ingestion per hour to ingestion per day based on number of hours awake per day ###############
 ######## This makes the assumption that the frequency of HM and SM soil mouthing averaged over the duration of observation represents the average over the entire day
 ##### Check this assumption by.......
-  #### Rationalizing that we captured at least one (of how many?) feeding periods.
+#### Rationalizing that we captured at least one (of how many?) feeding periods.
 
 
 
@@ -402,3 +496,8 @@ soil.survey.v3 <- obs.stat.v3.raw %>%
 
 # The average number of hours awake was collected by recall on during the third observation
 # Recall error could cause 
+
+
+
+
+
