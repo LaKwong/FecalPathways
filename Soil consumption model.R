@@ -180,7 +180,7 @@ qplot(soil.M.load, geom = "histogram", binwidth = 1)
 # ### No distribution fits so instead I'll draw from the empirical data
 # soil.M.load.dist <- fitdist(soil.M.load, "lnorm", method = "mle")
 
-soil.M.load.mcdata <- mcdata(sample(soil.M.load, size=ndvar(), replace=TRUE),type="V")
+soil.M.load.mcdata <- mcdata(sample(soil.M.load, size=ndvar(), replace=TRUE),type="VU")
 
 
 ###################################################################
@@ -328,7 +328,7 @@ names(soil.C.conc.long) <- "soil.C.conc"
 ######### Should soil.C.conc or soil.M.conc be a logrithmic dist? 
 qplot(soil.C.conc.long, geom = "histogram", binwidth = 0.01)
 
-soil.C.conc <- mcdata(sample(soil.C.conc.long$soil.C.conc, size=ndvar(), replace=TRUE),type="V")
+soil.C.conc <- mcdata(sample(soil.C.conc.long$soil.C.conc, size=ndvar(), replace=TRUE),type="VU")
 soil.M.conc <- soil.M.load.mcdata / M.hand.SA.WASHB.mcstoc #M.hand.SA.WASHB.end.mcstoc 
 # use M.hand.SA.WASHB.mcstoc instead of M.hand.SA.WASHB.end.mcstoc to for simplicity of the methodology. Also .end has mean SA of 323 and the pooled sample has mean SA of 320
 
@@ -558,28 +558,28 @@ scatter.smooth(feeding.mom.freq$age.vo, feeding.mom.freq$feeding.mom.freq)
 
 HM.proportions.4 <- HM.proportions %>% filter(age.vo.group == 4) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
 HM.proportions.index.4 <- sample(c(1:nrow(HM.proportions.4)), size = ndvar(), replace = TRUE)
-HM.child.4.mcdata <- mcdata(rowSums(HM.proportions.4[HM.proportions.index.4, c(1,2)]), type = "V")
-HM.child.nd.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 1], type = "V")
-HM.child.nd.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 1], type = "V")
-HM.child.d.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 2], type = "V")
-HM.mom.nd.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 3], type = "V")
-HM.mom.d.events.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 4], type = "V")
+HM.child.4.mcdata <- mcdata(rowSums(HM.proportions.4[HM.proportions.index.4, c(1,2)]), type = "VU")
+HM.child.nd.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 1], type = "VU")
+HM.child.nd.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 1], type = "VU")
+HM.child.d.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 2], type = "VU")
+HM.mom.nd.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 3], type = "VU")
+HM.mom.d.events.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 4], type = "VU")
 
 HM.proportions.5 <- HM.proportions %>% filter(age.vo.group == 5) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
 HM.proportions.index.5 <- sample(c(1:nrow(HM.proportions.5)), size = ndvar(), replace = TRUE)
-HM.child.5.mcdata <- mcdata(rowSums(HM.proportions.5[HM.proportions.index.5, c(1,2)]), type = "V")
-HM.child.nd.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 1], type = "V")
-HM.child.d.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 2], type = "V")
-HM.mom.nd.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 3], type = "V")
-HM.mom.d.events.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 4], type = "V")
+HM.child.5.mcdata <- mcdata(rowSums(HM.proportions.5[HM.proportions.index.5, c(1,2)]), type = "VU")
+HM.child.nd.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 1], type = "VU")
+HM.child.d.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 2], type = "VU")
+HM.mom.nd.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 3], type = "VU")
+HM.mom.d.events.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 4], type = "VU")
 
 HM.proportions.6 <- HM.proportions %>% filter(age.vo.group == 6) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
 HM.proportions.index.6 <- sample(c(1:nrow(HM.proportions.6)), size = ndvar(), replace = TRUE)
-HM.child.6.mcdata <- mcdata(rowSums(HM.proportions.6[HM.proportions.index.6, c(1,2)]), type = "V")
-HM.child.nd.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 1], type = "V")
-HM.child.d.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 2], type = "V")
-HM.mom.nd.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 3], type = "V")
-HM.mom.d.events.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 4], type = "V")
+HM.child.6.mcdata <- mcdata(rowSums(HM.proportions.6[HM.proportions.index.6, c(1,2)]), type = "VU")
+HM.child.nd.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 1], type = "VU")
+HM.child.d.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 2], type = "VU")
+HM.mom.nd.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 3], type = "VU")
+HM.mom.d.events.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 4], type = "VU")
 
 
 
@@ -588,16 +588,16 @@ HM.mom.d.events.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 4], 
 ############## Use the data on total HM contacts from SO and VO to create distributions and use this distributions to create mcstoc
 ## For all HM_child
 HM.SM.f6.dist <- fitdist(HM.SM[HM.SM$age < 6, "HM"], "weibull", method = "mle")
-HM.SM.f6.mcstoc <- mcstoc(rweibull, type="V", shape = HM.SM.f6.dist$estimate[[1]], scale = HM.SM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.SM.f6.mcstoc <- mcstoc(rweibull, type="VU", shape = HM.SM.f6.dist$estimate[[1]], scale = HM.SM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
 HM.SM.6_12.dist <- fitdist(HM.SM[HM.SM$age >= 6 & HM.SM$age < 12, "HM"], "weibull", method = "mle")
-HM.SM.6_12.mcstoc <- mcstoc(rweibull, type="V", shape = HM.SM.f6.dist$estimate[[1]], scale = HM.SM.6_12.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.SM.6_12.mcstoc <- mcstoc(rweibull, type="VU", shape = HM.SM.f6.dist$estimate[[1]], scale = HM.SM.6_12.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
 HM.SM.12_24.dist <- fitdist(HM.SM[HM.SM$age >=12 & HM.SM$age < 24, "HM"], "weibull", method = "mle")
-HM.SM.12_24.mcstoc <- mcstoc(rweibull, type="V", shape = HM.SM.f6.dist$estimate[[1]], scale = HM.SM.12_24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.SM.12_24.mcstoc <- mcstoc(rweibull, type="VU", shape = HM.SM.f6.dist$estimate[[1]], scale = HM.SM.12_24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
 HM.SM.o24.dist <- fitdist(HM.SM[HM.SM$age >= 24, "HM"], "weibull", method = "mle")
-HM.SM.o24.mcstoc <- mcstoc(rweibull, type="V", shape = HM.SM.o24.dist$estimate[[1]], scale = HM.SM.o24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.SM.o24.mcstoc <- mcstoc(rweibull, type="VU", shape = HM.SM.o24.dist$estimate[[1]], scale = HM.SM.o24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
 # # For the month-specific distributions, can I make weibull for each month?
 #find.dist <- function(data, x, dist, who) {fitdist(data[data$age == x, who], dist, method = "mle")} #who is "HM_child" or "HM_mom"
@@ -605,7 +605,7 @@ find.dist <- function(data, x, dist) {fitdist(data[data$age == x, "HM"], dist, m
 
 for(i in 6:23){ #max(HM.SM$age)
   assign(paste("HM.SM.", i, ".dist", sep = ""), find.dist(HM.SM, i, "weibull"))
-  assign(paste("HM.SM.", i, ".mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM"], size = ndvar(), replace = TRUE), type = "V"))
+  assign(paste("HM.SM.", i, ".mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM"], size = ndvar(), replace = TRUE), type = "VU"))
 }
 
 ####################################################################################################
@@ -643,7 +643,7 @@ HM.other.d.o24.mcdata <- HM.mom.d.events.6.mcdata
 #################### Combine load_child/load_mom with HM_child/HM_mom with mouth SA dist, removal efficiency dist
 
 #HF	Child own hand fracion mouthed/event	-	day	beta	3.7	25				Zartarian 2005 as presented in Ozkaynak 2011	Zartarian 2005
-HF.child.mcstoc <- mcstoc(rbeta, type="V", shape1 = 3.7, shape2 = 25, rtrunc=TRUE, linf=0)
+HF.child.mcstoc <- mcstoc(rbeta, type="VU", shape1 = 3.7, shape2 = 25, rtrunc=TRUE, linf=0)
 ##########################################################
 # I can do better than this!! Work to replace this value, which is based only on 20 children. 
 
@@ -679,7 +679,7 @@ HF.child.mcstoc <- mcstoc(rbeta, type="V", shape1 = 3.7, shape2 = 25, rtrunc=TRU
 
 for(i in c(4:40)){ #max(HM.SM$age)
   assign(paste("C.hand.SA.WASHB.inMouth.", i, ".mcdata", sep = ""), get(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = "")) * HF.child.mcstoc)
-  #assign(paste("C.hand.SA.WASHB.inMouth.", i, ".mcdata", sep = ""), mcdata(sample(get(paste("C.hand.SA.WASHB.inMouth.", i, sep = "")) , size = ndvar(), replace = TRUE), type = "V"))
+  #assign(paste("C.hand.SA.WASHB.inMouth.", i, ".mcdata", sep = ""), mcdata(sample(get(paste("C.hand.SA.WASHB.inMouth.", i, sep = "")) , size = ndvar(), replace = TRUE), type = "Vu"))
 }
 
 C.hand.SA.WASHB.inMouth.6.mcdata
@@ -706,13 +706,13 @@ HF.ofmom.30 <- 16.1/ median(M.hand.SA.WASHB.mcstoc) # use for age.grop = 6 24-36
 
 
 # HF.mom.mcstoc  <- mcstoc(runif, type="V", min = HF.ofmom.6, max = HF.ofmom.30, rtrunc=TRUE, linf=0) 
-HF.mom.mcstoc.f6  <- mcstoc(runif, type="V", min = HF.ofmom.6, max = HF.ofmom.6, rtrunc=TRUE, linf=0) 
-HF.mom.mcstoc.6_12  <- mcstoc(runif, type="V", min = HF.ofmom.6, max = HF.ofmom.12, rtrunc=TRUE, linf=0) 
-HF.mom.mcstoc.12_24  <- mcstoc(runif, type="V", min = HF.ofmom.12, max = HF.ofmom.24, rtrunc=TRUE, linf=0) 
-HF.mom.mcstoc.24_36  <- mcstoc(runif, type="V", min = HF.ofmom.24, max = HF.ofmom.30, rtrunc=TRUE, linf=0) 
+HF.mom.mcstoc.f6  <- mcstoc(runif, type="VU", min = HF.ofmom.6, max = HF.ofmom.6, rtrunc=TRUE, linf=0) 
+HF.mom.mcstoc.6_12  <- mcstoc(runif, type="VU", min = HF.ofmom.6, max = HF.ofmom.12, rtrunc=TRUE, linf=0) 
+HF.mom.mcstoc.12_24  <- mcstoc(runif, type="VU", min = HF.ofmom.12, max = HF.ofmom.24, rtrunc=TRUE, linf=0) 
+HF.mom.mcstoc.24_36  <- mcstoc(runif, type="VU", min = HF.ofmom.24, max = HF.ofmom.30, rtrunc=TRUE, linf=0) 
 
 # HMRE	Hand mouthing removal(transfer) eff.	-	day	beta	2	8				Cohen Hubal 2008 as presented in Ozkaynak 2011
-HMRE.mcstoc <- mcstoc(rbeta, type="V", shape1 = 2, shape2 = 8, rtrunc=TRUE, linf=0)
+HMRE.mcstoc <- mcstoc(rbeta, type="VU", shape1 = 2, shape2 = 8, rtrunc=TRUE, linf=0)
 
 ### For now, for children under 6 mo, use the soil loading est for children 4 mo old
 # C.soil.simple.f6 <- ((C.soil.load.4 * HM.child.f6.mcdata * HF.child.mcstoc) + (M.soil.load * (HM.other.nd.f6.mcdata + HM.other.d.f6.mcdata) * HF.mom.mcstoc))  * HMRE.mcstoc
@@ -773,12 +773,30 @@ soil.test3 <- mcmodel({
 })
 
 res3 <- evalmcmod(soil.test3, nsv=ndvar(), nsu=ndunc(), seed=seed)
+print(res3, digits = digits)
+
 plot(res3, prec = 0.001, stat = c("median", "mean"), lim = c(0.025, 0.25, 0.75, 0.975), na.rm =
        TRUE, griddim = NULL, xlab = NULL, ylab = "Fn(x)", main = "", draw = TRUE, paint = TRUE)
 tor.res3 <- tornado(res3, use = "complete.obs" )
 plot(tor.res3)
 summary(res3)
 hist(res3)
+
+# Report the mean and median of the exposure means with a 95% confidence interval (CI95).
+mean.expo <- sapply(1:ndunc(), function(j) mean(expo.ev1$expo.mc1[, j, ]))
+mean(mean.expo)
+
+quantile(mean.expo, probs = seq(0, 1, 0.025))[c("2.5%", "50%", "97.5%")]
+
+
+# Generate an "ecdf" = empirical cumulative distribution function plot. This actually calls plot.mcnode().
+plot(expo.ev1$expo.mc1)
+
+# Generate an "ecdf" plot. This actually calls plot.mcnode().
+plot(expo.ev1$risk, main = "Daily Risk of Infection with Cryptosporidium by Drinking Water in the USVI", ylab = "Proportion of Population", xlab = "Daily Probability of Infection")
+
+
+
 
 soil.test1 <- mcmodel({ 
   C.soil.simple.f6 <- ((((soil.C.conc * C.hand.SA.WASHB.f6.mcdata) * HM.child.f6.mcdata * HF.child.mcstoc) + ((soil.M.load.mcdata / M.hand.SA.WASHB.mcstoc) * M.hand.SA.WASHB.mcstoc * (HM.other.nd.f6.mcdata + HM.other.d.f6.mcdata) * HF.mom.mcstoc.6_12))  * HMRE.mcstoc) * awake.hr.3
@@ -841,23 +859,24 @@ soil.survey.v3 <- obs.stat.v3.raw %>%
 hr.awake.base <- obs.stat.v3.raw %>%
   select(pid, calc.age.mo, awake.day.hr, minus12.months, minus12.awake.time, minus24.months, minus24.awake.time)
 
-
-# The average number of hours awake was collected by recall on during the third observation
-# Recall error could cause 
-
-names(hr.awake.base) <- c("hh", "age", "awake.hr", "age", "awake.hr", "age", "awake.hr")
-hr.awake <- rbind(hr.awake.base[, c(1, 2:3)], hr.awake.base[, c(1, 3:4)], hr.awake.base[, c(1, 5:6)]) %>%
-  mutate(age.mo = floor(age)) %>%
-  select(hh, age, age.mo, awake.hr) %>%
-  filter(!is.na(hh), age.mo > 0)
-
-hr.awake.find.dist <- function(data, x, dist) {fitdist(data[data$age.mo == x, "awake.hr"], dist, method = "mle")}
-
-max(hr.awake$age.mo, na.rm = TRUE)
-for(i in 4:43){ #max(HM.SM$age)
-  assign(paste("hr.awake.", i, ".dist", sep = ""), hr.awake.find.dist(hr.awake, i, "weibull"))
-  assign(paste("hr.awake", i, ".mcdata", sep = ""), mcdata(sample(hr.awake[hr.awake$age.mo == i, "awake.hr"], size = ndvar(), replace = TRUE), type = "V"))
-}
-
-scatter.smooth(hr.awake$age, hr.awake$awake.hr)
+# ###################### Number of hours awake, from VO.R3 survey #############################################3
+# # The average number of hours awake was collected by recall on during the third observation
+# # Recall error could cause the numbers to be off
+# ## This data isn't very good and from a small sample size so I'll use a lit value instead
+# 
+# names(hr.awake.base) <- c("hh", "age", "awake.hr", "age", "awake.hr", "age", "awake.hr")
+# hr.awake <- rbind(hr.awake.base[, c(1, 2:3)], hr.awake.base[, c(1, 3:4)], hr.awake.base[, c(1, 5:6)]) %>%
+#   mutate(age.mo = floor(age)) %>%
+#   select(hh, age, age.mo, awake.hr) %>%
+#   filter(!is.na(hh), age.mo > 0)
+# 
+# hr.awake.find.dist <- function(data, x, dist) {fitdist(data[data$age.mo == x, "awake.hr"], dist, method = "mle")}
+# 
+# max(hr.awake$age.mo, na.rm = TRUE)
+# for(i in 4:43){ #max(HM.SM$age)
+#   assign(paste("hr.awake.", i, ".dist", sep = ""), hr.awake.find.dist(hr.awake, i, "weibull"))
+#   assign(paste("hr.awake", i, ".mcdata", sep = ""), mcdata(sample(hr.awake[hr.awake$age.mo == i, "awake.hr"], size = ndvar(), replace = TRUE), type = "V"))
+# }
+# 
+# scatter.smooth(hr.awake$age, hr.awake$awake.hr)
 
