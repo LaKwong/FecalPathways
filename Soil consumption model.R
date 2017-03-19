@@ -2,6 +2,13 @@
 # normal probably fits pretty well, but must be bounded at 0 because neither SA nor conc or load can be neg
 
 
+# How do I know the ratio of variable to uncertainty and use mcratio?
+# 
+# I think  I have  used mcdata wrong, instead of mcdata(data) I need to generate an 
+# empirical distribution out of the data-- then it selects not just from the data, but from values within the distribution. How does it generate the distribution??
+
+# in mcstoc(rempiricalD...) when do I need to specific nsv = and when not? why don't I need to specify nsu?
+
 ### Exclude obj mouthing?
 
 ######### Simple soil model ##############
@@ -28,8 +35,8 @@ library(plyr)
 library(dplyr)
 #library(compositions)
 
-ndvar <- 101 #1001, 10001
-ndunc <- 10
+ndvar <- 101 #1001, 10001 = number of simulations in the variability dimension
+ndunc <- 10 # = number of simulations in the uncertainty dimension
 seed <- 888
 
 # Load soil mass data
@@ -180,7 +187,10 @@ qplot(soil.M.load, geom = "histogram", binwidth = 1)
 # ### No distribution fits so instead I'll draw from the empirical data
 # soil.M.load.dist <- fitdist(soil.M.load, "lnorm", method = "mle")
 
-soil.M.load.mcdata <- mcdata(sample(soil.M.load, size=ndvar(), replace=TRUE),type="VU")
+soil.M.load.mcstoc <- mcstoc(rempiricalD, values = soil.M.load, type="VU", nsv = ndvar()) # I think this does the same thing as sample(soil.M.load, size=ndvar(), replace=TRUE)
+# I think I can't make a continuous function out of this because it doesn't fit into a distribution
+# soil.M.load.mcdata <- mcstoc(rempiricalC(n = ndvar(), min = min(soil.M.load), max = max(soil.M.load), values = soil.M.load), type="VU")
+#soil.M.load.mcdata <- mcdata(sample(soil.M.load, size=ndvar(), replace=TRUE),type="VU")
 
 
 ###################################################################
@@ -189,7 +199,7 @@ soil.M.load.mcdata <- mcdata(sample(soil.M.load, size=ndvar(), replace=TRUE),typ
 ####### In the file "WASHB anthro" #############
 # Load anthropometric data
 # Calculate a hand surface area based on body mass
-# Calc age difference between when anthropometic data was collected and when soil mass was collected
+# Calc age difference between when anthropometic data was collected and when asoil mass was collected
 # If the difference is small - assume that growth between the two time periods was negligible and use the hand surface area caclulated from the same child's measure height and weight 
 # This is likely not a good measurement because young children grow rapidly
 # If the difference is large - select the surface area from the distribution of children the same number of months old
@@ -328,8 +338,10 @@ names(soil.C.conc.long) <- "soil.C.conc"
 ######### Should soil.C.conc or soil.M.conc be a logrithmic dist? 
 qplot(soil.C.conc.long, geom = "histogram", binwidth = 0.01)
 
-soil.C.conc <- mcdata(sample(soil.C.conc.long$soil.C.conc, size=ndvar(), replace=TRUE),type="VU")
-soil.M.conc <- soil.M.load.mcdata / M.hand.SA.WASHB.mcstoc #M.hand.SA.WASHB.end.mcstoc 
+soil.C.conc <- mcstoc(rempiricalD, values = soil.C.conc.long$soil.C.conc, type="VU", nsv = ndvar())
+#soil.C.conc <- mcdata(sample(soil.C.conc.long$soil.C.conc, size=ndvar(), replace=TRUE),type="VU")
+soil.M.conc <- soil.M.load.mcstoc / M.hand.SA.WASHB.mcstoc #M.hand.SA.WASHB.end.mcstoc 
+#soil.M.conc <- soil.M.load.mcdata / M.hand.SA.WASHB.mcstoc #M.hand.SA.WASHB.end.mcstoc 
 # use M.hand.SA.WASHB.mcstoc instead of M.hand.SA.WASHB.end.mcstoc to for simplicity of the methodology. Also .end has mean SA of 323 and the pooled sample has mean SA of 320
 
 # Ozkaynak Soil adherence to hands mg/cm2 : mcstoc(rlnorm, type = "V", meanlog = 0.11, sdlog = 2.0)
@@ -377,22 +389,27 @@ C.hand.SA.WASHB.lm$coefficients[2]
 # }
 
 C.hand.SA.WASHB.f6 <- C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6, "C.hand.SA"] # This variable isn't actually used
-C.hand.SA.WASHB.f6.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
+C.hand.SA.WASHB.f6.mcstoc <- mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6, "C.hand.SA"], type = "V", nsv = ndvar())
+#C.hand.SA.WASHB.f6.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
 
 C.hand.SA.WASHB.6_12 <- C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 6 & C.hand.SA.WASHB$age.mo < 12, "C.hand.SA"] # This variable isn't actually used
-C.hand.SA.WASHB.6_12.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
+C.hand.SA.WASHB.6_12.mcstoc <- mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 6 & C.hand.SA.WASHB$age.mo < 12, "C.hand.SA"], type = "V", nsv = ndvar())
+#C.hand.SA.WASHB.6_12.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 6 & C.hand.SA.WASHB$age.mo < 12, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
 
 C.hand.SA.WASHB.12_24 <- C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 12 & C.hand.SA.WASHB$age.mo < 24, "C.hand.SA"] # This variable isn't actually used
-C.hand.SA.WASHB.12_24.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
+C.hand.SA.WASHB.12_24.mcstoc <- mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 12 & C.hand.SA.WASHB$age.mo < 24, "C.hand.SA"], type = "V", nsv = ndvar())
+#C.hand.SA.WASHB.12_24.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 12 & C.hand.SA.WASHB$age.mo < 24, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
 
 C.hand.SA.WASHB.o24 <- C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24, "C.hand.SA"] # This variable isn't actually used
-C.hand.SA.WASHB.o24.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo > 24, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
+C.hand.SA.WASHB.6_12.mcstoc <- mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24, "C.hand.SA"], type = "V", nsv = ndvar())
+#C.hand.SA.WASHB.o24.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
 
 qplot(C.hand.SA.WASHB.o24, geom = "histogram", binwidth = 1)
 
 for(i in c(6:23)){ #max(HM.SM$age)
   assign(paste("C.hand.SA.WASHB.", i, sep = ""), C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"])
-  assign(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = ""), mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V"))
+  assign(paste("C.hand.SA.WASHB.", i, ".mcstoc", sep = ""), mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"], type = "V", nsv = ndvar()))
+  # assign(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = ""), mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V"))
 }
 
 # C.hand.SA.WASHB.9.mcdata
@@ -426,7 +443,8 @@ M.hand.SA.WASHB.mcstoc <- mcstoc(rnorm, type="V", mean = M.hand.SA.WASHB.dist$es
 #Don't use the age month-specfic code for children below
 # Age month-specific for children
 for(i in c(4:40)){
-  assign(paste("C.soil.load.", i, sep = ""), soil.C.conc * get(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = "")))
+  assign(paste("C.soil.load.", i, sep = ""), soil.C.conc * get(paste("C.hand.SA.WASHB.", i, ".mcstoc", sep = "")))
+  #assign(paste("C.soil.load.", i, sep = ""), soil.C.conc * get(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = "")))
 }
 
 M.soil.load <- soil.M.conc * M.hand.SA.WASHB.mcstoc
@@ -554,33 +572,40 @@ scatter.smooth(feeding.mom.freq$age.vo, feeding.mom.freq$feeding.mom.freq)
 
 # Make an array of vectors, where each vector is the child_nd, child_d, mom_nd, feeding.freq for each child in the age group
 # Then create a random sample of the indicies
-# Select the random index and get the child_nd, child_d, mom_nd, or feeding.freq col and save as mcdata
+# Select the random index of the entire row and get the child_nd, child_d, mom_nd, or feeding.freq col and save as mcdata
 
 HM.proportions.4 <- HM.proportions %>% filter(age.vo.group == 4) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
 HM.proportions.index.4 <- sample(c(1:nrow(HM.proportions.4)), size = ndvar(), replace = TRUE)
-HM.child.4.mcdata <- mcdata(rowSums(HM.proportions.4[HM.proportions.index.4, c(1,2)]), type = "VU")
-HM.child.nd.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 1], type = "VU")
-HM.child.nd.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 1], type = "VU")
-HM.child.d.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 2], type = "VU")
-HM.mom.nd.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 3], type = "VU")
-HM.mom.d.events.4.mcdata <- mcdata(HM.proportions.4[HM.proportions.index.4, 4], type = "VU")
+HM.child.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, c(1,2)], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.child.nd.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, 1], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.child.d.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, 2], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.mom.nd.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, 3], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.mom.d.events.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, 4], na.rm = TRUE), type = "VU", nsv = ndvar())
 
 HM.proportions.5 <- HM.proportions %>% filter(age.vo.group == 5) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
 HM.proportions.index.5 <- sample(c(1:nrow(HM.proportions.5)), size = ndvar(), replace = TRUE)
-HM.child.5.mcdata <- mcdata(rowSums(HM.proportions.5[HM.proportions.index.5, c(1,2)]), type = "VU")
-HM.child.nd.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 1], type = "VU")
-HM.child.d.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 2], type = "VU")
-HM.mom.nd.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 3], type = "VU")
-HM.mom.d.events.5.mcdata <- mcdata(HM.proportions.5[HM.proportions.index.5, 4], type = "VU")
+HM.child.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, c(1,2)], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.child.nd.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, 1], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.child.d.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, 2], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.mom.nd.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, 3], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.mom.d.events.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, 4], na.rm = TRUE), type = "VU", nsv = ndvar())
 
 HM.proportions.6 <- HM.proportions %>% filter(age.vo.group == 6) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
 HM.proportions.index.6 <- sample(c(1:nrow(HM.proportions.6)), size = ndvar(), replace = TRUE)
-HM.child.6.mcdata <- mcdata(rowSums(HM.proportions.6[HM.proportions.index.6, c(1,2)]), type = "VU")
-HM.child.nd.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 1], type = "VU")
-HM.child.d.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 2], type = "VU")
-HM.mom.nd.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 3], type = "VU")
-HM.mom.d.events.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 4], type = "VU")
+HM.child.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, c(1,2)], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.child.nd.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, 1], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.child.d.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, 2], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.mom.nd.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, 3], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.mom.d.events.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, 4], na.rm = TRUE), type = "VU", nsv = ndvar())
 
+# # code before switching from mcdata to mcstoc(rempiricalD....)
+# HM.proportions.6 <- HM.proportions %>% filter(age.vo.group == 6) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
+# HM.proportions.index.6 <- sample(c(1:nrow(HM.proportions.6)), size = ndvar(), replace = TRUE)
+# HM.child.6.mcdata <- mcdata(rowSums(HM.proportions.6[HM.proportions.index.6, c(1,2)]), type = "VU")
+# HM.child.nd.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 1], type = "VU")
+# HM.child.d.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 2], type = "VU")
+# HM.mom.nd.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 3], type = "VU")
+# HM.mom.d.events.6.mcdata <- mcdata(HM.proportions.6[HM.proportions.index.6, 4], type = "VU")
 
 
 #######################################################################################
@@ -605,40 +630,32 @@ find.dist <- function(data, x, dist) {fitdist(data[data$age == x, "HM"], dist, m
 
 for(i in 6:23){ #max(HM.SM$age)
   assign(paste("HM.SM.", i, ".dist", sep = ""), find.dist(HM.SM, i, "weibull"))
-  assign(paste("HM.SM.", i, ".mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM"], size = ndvar(), replace = TRUE), type = "VU"))
+  assign(paste("HM.SM.", i, ".mcstoc", sep = ""), mcstoc(rempiricalD, values = HM.SM[HM.SM$age == i, "HM"], type = "VU", nsv = ndvar()))
+  #assign(paste("HM.SM.", i, ".mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM"], size = ndvar(), replace = TRUE), type = "VU"))
 }
+
 
 ####################################################################################################
 ############### Apportion HM to child (sum child_nd and child_d) and mom_d and feeding.freq
 # age.group = 4 is 12-24 mo, age.group = 5 is 12-24 mo, age.group = 6 is 24-36 mo
 
 # the percentages in hand_summary were in the form of XX% for the purpose of graphing boxplots, so need to divide by 100 to get to a percent between 0-1. 
-HM.child.f6.mcdata <- HM.SM.f6.mcstoc * (HM.child.4.mcdata/100)
-HM.other.nd.f6.mcdata <- HM.SM.f6.mcstoc * (HM.mom.nd.4.mcdata/100)
-HM.other.d.f6.mcdata <- HM.mom.d.events.4.mcdata
+HM.child.f6.mcstoc <- HM.SM.f6.mcstoc * (HM.child.4.mcstoc/100)
+HM.other.nd.f6.mcstoc <- HM.SM.f6.mcstoc * (HM.mom.nd.4.mcstoc/100)
+HM.other.d.f6.mcstoc <- HM.mom.d.events.4.mcstoc
 
-HM.child.6_12.mcdata <- HM.SM.6_12.mcstoc * (HM.child.4.mcdata/100)
-HM.other.nd.6_12.mcdata <- HM.SM.6_12.mcstoc * (HM.mom.nd.4.mcdata/100)
-HM.other.d.6_12.mcdata <- HM.mom.d.events.4.mcdata
+HM.child.6_12.mcstoc <- HM.SM.6_12.mcstoc * (HM.child.4.mcstoc/100)
+HM.other.nd.6_12.mcstoc <- HM.SM.6_12.mcstoc * (HM.mom.nd.4.mcstoc/100)
+HM.other.d.6_12.mcstoc <- HM.mom.d.events.4.mcstoc
 
-HM.child.12_24.mcdata <- HM.SM.12_24.mcstoc * (HM.child.5.mcdata/100)
-HM.other.nd.12_24.mcdata <- HM.SM.12_24.mcstoc * (HM.mom.nd.5.mcdata/100)
-HM.other.d.12_24.mcdata <- HM.mom.d.events.5.mcdata
+HM.child.12_24.mcstoc <- HM.SM.12_24.mcstoc * (HM.child.5.mcstoc/100)
+HM.other.nd.12_24.mcstoc <- HM.SM.12_24.mcstoc * (HM.mom.nd.5.mcstoc/100)
+HM.other.d.12_24.mcstoc <- HM.mom.d.events.5.mcstoc
 
 
-HM.child.o24.mcdata <- HM.SM.o24.mcstoc * (HM.child.6.mcdata/100)
-HM.other.nd.o24.mcdata <- HM.SM.o24.mcstoc * (HM.mom.nd.6.mcdata/100)
-HM.other.d.o24.mcdata <- HM.mom.d.events.6.mcdata
-# 
-# HM.SM.o24.child.mcstoc
-# HM.SM.f6.mom.mcstoc
-# HM.SM.o24.mom.mcstoc
-# 
-# HM.child.nd.6.mcdata
-# HM.child.d.6.mcdata
-# HM.mom.nd.6.mcdata
-# HM.mom.d.events.6.mcdata
-
+HM.child.o24.mcstoc <- HM.SM.o24.mcstoc * (HM.child.6.mcstoc/100)
+HM.other.nd.o24.mcstoc <- HM.SM.o24.mcstoc * (HM.mom.nd.6.mcstoc/100)
+HM.other.d.o24.mcstoc <- HM.mom.d.events.6.mcstoc
 
 #################### Combine load_child/load_mom with HM_child/HM_mom with mouth SA dist, removal efficiency dist
 
@@ -682,7 +699,6 @@ for(i in c(4:40)){ #max(HM.SM$age)
   #assign(paste("C.hand.SA.WASHB.inMouth.", i, ".mcdata", sep = ""), mcdata(sample(get(paste("C.hand.SA.WASHB.inMouth.", i, sep = "")) , size = ndvar(), replace = TRUE), type = "Vu"))
 }
 
-C.hand.SA.WASHB.inMouth.6.mcdata
 # HF.ofmom.xx <- C.hand.SA.WASHB.inMouth.xx.mcdata / median(M.hand.SA.WASHB.mcstoc)
 HF.ofmom.6 <- 10.2/ median(M.hand.SA.WASHB.mcstoc)
 HF.ofmom.9 <- 11.1/ median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 6-12 mo
@@ -692,7 +708,7 @@ HF.ofmom.24 <- 14.1/ median(M.hand.SA.WASHB.mcstoc)
 HF.ofmom.30 <- 16.1/ median(M.hand.SA.WASHB.mcstoc) # use for age.grop = 6 24-36 mo
 #C.hand.SA.WASHB.inMouth.30.mcdata
 
-# ## Could chane this so XX is by age group, not by month....This is better because below I change it into ae groups anyway...
+# ## Could change this so XX is by age group, not by month....This is better because below I change it into age groups anyway...
 # C.hand.SA.WASHB.inMouth.f6.mcdata <- C.hand.SA.WASHB.f6.mcdata * HF.child.mcstoc # mean 12.2, med 11.4
 # C.hand.SA.WASHB.inMouth.6_12.mcdata <- C.hand.SA.WASHB.6_12.mcdata * HF.child.mcstoc # mean 12.2, med 11.3
 # C.hand.SA.WASHB.inMouth.12_24.mcdata <- C.hand.SA.WASHB.12_24.mcdata * HF.child.mcstoc # mean 12.2, med 11.4
@@ -746,14 +762,14 @@ awake.hr.36_48 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=T
 
 ########## Eval the mc model ###########
 child.hand.soil.concentration.mg.cm2 <- soil.C.conc
-child.hand.surface.area.cm2 <- C.hand.SA.WASHB.o24.mcdata  #C.hand.SA.WASHB.o24.mcdata
-child.hand.mouth.frequency.events.hr <- HM.child.o24.mcdata  #HM.child.o24.mcdata
+child.hand.surface.area.cm2 <- C.hand.SA.WASHB.o24.mcstoc  #C.hand.SA.WASHB.o24.mcdata
+child.hand.mouth.frequency.events.hr <- HM.child.o24.mcstoc  #HM.child.o24.mcdata
 child.hand.fraction.mouthed <- HF.child.mcstoc
-mom.hand.soil.load.mg <- soil.M.load.mcdata
+mom.hand.soil.load.mg <- soil.M.load.mcstoc
 #mom.soil.sample.hand.surface.area.cm2 <- M.hand.SA.WASHB.end.mcstoc
 mom.hand.surface.area.cm2 <- M.hand.SA.WASHB.mcstoc
-mom.hand.mouth.nonfood.frequency.events.hr <- HM.other.nd.o24.mcdata  #HM.other.nd.o24.mcdata
-mom.feeding.frequency.events.hr <- HM.other.d.o24.mcdata  #HM.other.d.o24.mcdata
+mom.hand.mouth.nonfood.frequency.events.hr <- HM.other.nd.o24.mcstoc  #HM.other.nd.o24.mcdata
+mom.feeding.frequency.events.hr <- HM.other.d.o24.mcstoc  #HM.other.d.o24.mcdata
 mom.hand.fraction.mouthed <- HF.mom.mcstoc.24_36  #HF.mom.mcstoc.24_30   #HF.mom.mcstoc.f6 is only one value so not good to use --> use HF.mom.mcstoc.6_12 instead, even though it is for the wrong age group
 # > HF.mom.mcstoc.f6
 # node    mode  nsv nsu nva variate    min   mean median    max Nas type outm
@@ -799,23 +815,23 @@ plot(expo.ev1$risk, main = "Daily Risk of Infection with Cryptosporidium by Drin
 
 
 soil.test1 <- mcmodel({ 
-  C.soil.simple.f6 <- ((((soil.C.conc * C.hand.SA.WASHB.f6.mcdata) * HM.child.f6.mcdata * HF.child.mcstoc) + ((soil.M.load.mcdata / M.hand.SA.WASHB.mcstoc) * M.hand.SA.WASHB.mcstoc * (HM.other.nd.f6.mcdata + HM.other.d.f6.mcdata) * HF.mom.mcstoc.6_12))  * HMRE.mcstoc) * awake.hr.3
+  C.soil.simple.f6 <- ((((soil.C.conc * C.hand.SA.WASHB.f6.mcstoc) * HM.child.f6.mcstoc * HF.child.mcstoc) + ((soil.M.load.mcstoc / M.hand.SA.WASHB.mcstoc) * M.hand.SA.WASHB.mcstoc * (HM.other.nd.f6.mcstoc + HM.other.d.f6.mcstoc) * HF.mom.mcstoc.6_12))  * HMRE.mcstoc) * awake.hr.3
   # for(i in 6:23){
-  #   assign(paste("C.soil.simple.", i, sep = ""), ((get(paste("C.soil.load.", i, sep = "")) * get(paste("HM.SM.", i, ".child.mcdata", sep = ""))) + 
-  #                                                   (M.soil.load * get(paste("HM.SM.", i, ".mom.mcdata", sep = "")))) * HF.mcstoc * HMRE.mcstoc)
-  #   #C.soil.simple.10 <- ((C.soil.load.10 * HM.SM.10.child.mcdata) + (M.soil.load * HM.SM.10.mom.mcdata)) * HF.mcstoc * HMRE.mcstoc
+  #   assign(paste("C.soil.simple.", i, sep = ""), ((get(paste("C.soil.load.", i, sep = "")) * get(paste("HM.SM.", i, ".child.mcstoc", sep = ""))) + 
+  #                                                   (M.soil.load * get(paste("HM.SM.", i, ".mom.mcstoc", sep = "")))) * HF.mcstoc * HMRE.mcstoc)
+  #   #C.soil.simple.10 <- ((C.soil.load.10 * HM.SM.10.child.mcdata) + (M.soil.load * HM.SM.10.mom.mcstoc)) * HF.mcstoc * HMRE.mcstoc
   # }
-  #C.soil.simple.6 <- ((C.soil.load.6 * HM.SM.6.child.mcdata * HF.child.mcstoc) + (M.soil.load * HM.SM.6.mom.mcdata * HF.mom.mcstoc))  * HMRE.mcstoc * (24-sleep.hr.6)
-  #C.soil.simple.7 <- ((C.soil.load.7 * HM.SM.7.child.mcdata * HF.child.mcstoc) + (M.soil.load * HM.SM.7.mom.mcdata * HF.mom.mcstoc))  * HMRE.mcstoc * (24-sleep.hr.6)
+  #C.soil.simple.6 <- ((C.soil.load.6 * HM.SM.6.child.mcstoc * HF.child.mcstoc) + (M.soil.load * HM.SM.6.mom.mcstoc * HF.mom.mcstoc))  * HMRE.mcstoc * (24-sleep.hr.6)
+  #C.soil.simple.7 <- ((C.soil.load.7 * HM.SM.7.child.mcstoc * HF.child.mcstoc) + (M.soil.load * HM.SM.7.mom.mcstoc * HF.mom.mcstoc))  * HMRE.mcstoc * (24-sleep.hr.6)
   
-  res.4 <- mc(soil.C.conc, C.hand.SA.WASHB.f6.mcdata, HM.child.f6.mcdata, HF.child.mcstoc, soil.M.load.mcdata, M.hand.SA.WASHB.mcstoc, HM.other.nd.f6.mcdata, HM.other.d.f6.mcdata, HF.mom.mcstoc.6_12, HMRE.mcstoc, awake.hr.3, C.soil.simple.f6) # sleep.hr.3, 
+  res.4 <- mc(soil.C.conc, C.hand.SA.WASHB.f6.mcstoc, HM.child.f6.mcstoc, HF.child.mcstoc, soil.M.load.mcstoc, M.hand.SA.WASHB.mcstoc, HM.other.nd.f6.mcstoc, HM.other.d.f6.mcstoc, HF.mom.mcstoc.6_12, HMRE.mcstoc, awake.hr.3, C.soil.simple.f6) # sleep.hr.3, 
   #res.6 <- mc(C.soil.load.6, HM.SM.6.child.mcdata, HF.child.mcstoc, M.soil.load, HM.SM.6.mom.mcdata, HF.mom.mcstoc, HMRE.mcstoc, sleep.hr.6, C.soil.simple.f6)
   #res.7 <- mc(C.soil.load.7, HM.SM.7.child.mcdata, HF.child.mcstoc, M.soil.load, HM.SM.7.mom.mcdata, HF.mom.mcstoc, HMRE.mcstoc, sleep.hr.6, C.soil.simple.f6)
 })
 
 soil.test2 <- mcmodel({ 
-  C.soil.simple.o24 <- ((((soil.C.conc * C.hand.SA.WASHB.o24.mcdata) * HM.child.o24.mcdata * HF.child.mcstoc) + ((soil.M.load.mcdata / M.hand.SA.WASHB.mcstoc) * M.hand.SA.WASHB.mcstoc * (HM.other.nd.o24.mcdata + HM.other.d.o24.mcdata) * HF.mom.mcstoc.24_30))  * HMRE.mcstoc) * awake.hr.24_36
-  res.30 <- mc(soil.C.conc, C.hand.SA.WASHB.o24.mcdata, HM.child.o24.mcdata, HF.child.mcstoc, soil.M.load.mcdata, M.hand.SA.WASHB.mcstoc, HM.other.nd.o24.mcdata, HM.other.d.o24.mcdata, HF.mom.mcstoc.24_30, HMRE.mcstoc, awake.hr.24_36, C.soil.simple.o24) #sleep.hr.24_36, 
+  C.soil.simple.o24 <- ((((soil.C.conc * C.hand.SA.WASHB.o24.mcstoc) * HM.child.o24.mcstoc * HF.child.mcstoc) + ((soil.M.load.mcstoc / M.hand.SA.WASHB.mcstoc) * M.hand.SA.WASHB.mcstoc * (HM.other.nd.o24.mcstoc + HM.other.d.o24.mcstoc) * HF.mom.mcstoc.24_30))  * HMRE.mcstoc) * awake.hr.24_36
+  res.30 <- mc(soil.C.conc, C.hand.SA.WASHB.o24.mcstoc, HM.child.o24.mcstoc, HF.child.mcstoc, soil.M.load.mcstoc, M.hand.SA.WASHB.mcstoc, HM.other.nd.o24.mcstoc, HM.other.d.o24.mcstoc, HF.mom.mcstoc.24_30, HMRE.mcstoc, awake.hr.24_36, C.soil.simple.o24) #sleep.hr.24_36, 
 })
 
 res <- evalmcmod(soil.test1, nsv=ndvar(), nsu=ndunc(), seed=seed)
