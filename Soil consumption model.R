@@ -334,7 +334,6 @@ names(soil.C.conc.long) <- "soil.C.conc"
 
 ##################################################################################################
 ##########################################################################################
-################## should soil.C.conc be mcdata or a dist like soil.M.conc?
 ######### Should soil.C.conc or soil.M.conc be a logrithmic dist? 
 qplot(soil.C.conc.long, geom = "histogram", binwidth = 0.01)
 
@@ -344,20 +343,23 @@ soil.M.conc <- soil.M.load.mcstoc / M.hand.SA.WASHB.mcstoc #M.hand.SA.WASHB.end.
 #soil.M.conc <- soil.M.load.mcdata / M.hand.SA.WASHB.mcstoc #M.hand.SA.WASHB.end.mcstoc 
 # use M.hand.SA.WASHB.mcstoc instead of M.hand.SA.WASHB.end.mcstoc to for simplicity of the methodology. Also .end has mean SA of 323 and the pooled sample has mean SA of 320
 
-# Ozkaynak Soil adherence to hands mg/cm2 : mcstoc(rlnorm, type = "V", meanlog = 0.11, sdlog = 2.0)
-# Produces values WAY higher than my estimates
+# Ozkaynak Soil adherence to hands mg/cm2 : mcstoc(rlnorm, type = "V", meanlog = log(0.11), sdlog = log(2.0)) * Oz reports logrithmic dist with geometric mean = 0.11 and geometric sd = 2.0
+# Produces values ~ double my estimates...not sure what to do about this....
 # My est
 # > soil.C.conc
-# node    mode  nsv nsu nva variate     min   mean median  max Nas type outm
-# 1    x numeric 1001   1   1       1 0.00935 0.0808 0.0433 0.86  37    V each
+# node    mode  nsv nsu nva variate     min   mean median   max  Nas type outm
+# 1    x numeric 1001 101   1       1 0.00987 0.0811 0.0421 0.867 4453   VU each
 
 # Ozkaynak est
-# > mcstoc(rlnorm, type = "V", meanlog = 0.11, sdlog = 2.0)
-# node    mode  nsv nsu nva variate     min mean median max Nas type outm
-# 1    x numeric 1001   1   1       1 0.00151 7.03   1.02 529   0    V each
+# > mcstoc(rlnorm, type = "V", meanlog = log(0.11), sdlog = log(2.0))
+# node    mode  nsv nsu nva variate    min  mean median  max Nas type outm
+# 1    x numeric 1001   1   1       1 0.0111 0.139  0.109 1.01   0    V each
 
 
-##### To estimate the age month-specific load on the hands of WASHB kids #####
+##### Estimate the age month-specific load on the hands of WASHB kids #####
+### Do month-specific because their hands are growing 
+### I assume that the children from whom the samples were collected fall into the distribution of WASHB kids of the same age month
+
 ## Determine the month-specific hand surface area distribution for kids
 C.hand.SA.WASHB <- anth.soilMass.wide %>%
   #select(survey.age.mo.mid, C.hand.SA.mid, survey.age.mo.end, C.hand.SA.end) %>%
@@ -372,22 +374,8 @@ C.hand.SA.WASHB <- anth.soilMass.wide %>%
 
 scatter.smooth(C.hand.SA.WASHB$age, C.hand.SA.WASHB$C.hand.SA)
 
-scatter.smooth(C.hand.SA.WASHB$age.mo, C.hand.SA.WASHB$C.hand.SA)
-C.hand.SA.WASHB.lm <- lm(C.hand.SA ~ age.mo, C.hand.SA.WASHB)
-C.hand.SA.WASHB.lm$coefficients[1]
-C.hand.SA.WASHB.lm$coefficients[2]
-
-# ############# How about instead of making a distribution, you just use the empricial data
-# # For the month-specific distributions, can I make normal/weibull for each month?
-# C.hand.SA.WASHB.f6.dist <- fitdist(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6 & !is.na(C.hand.SA.WASHB$age.mo), "C.hand.SA"], "norm", method = "mle")
-# C.hand.SA.WASHB.o24.dist <- fitdist(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24 & !is.na(C.hand.SA.WASHB$age.mo), "C.hand.SA"], "norm", method = "mle")
-# 
-# hand.SA.find.dist <- function(data, x, dist) {fitdist(data[data$age.mo == x, "C.hand.SA"], dist, method = "mle")}
-# 
-# for(i in c(6:13, 18:23)){ #max(HM.SM$age)
-#   assign(paste("C.hand.SA.WASHB.", i, sep = ""), hand.SA.find.dist(C.hand.SA.WASHB, i, "norm"))
-# }
-
+############# Get the empirical hand SA data #########################
+# By age group
 C.hand.SA.WASHB.f6 <- C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6, "C.hand.SA"] # This variable isn't actually used
 C.hand.SA.WASHB.f6.mcstoc <- mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6, "C.hand.SA"], type = "V", nsv = ndvar())
 #C.hand.SA.WASHB.f6.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
@@ -401,53 +389,31 @@ C.hand.SA.WASHB.12_24.mcstoc <- mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.h
 #C.hand.SA.WASHB.12_24.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 12 & C.hand.SA.WASHB$age.mo < 24, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
 
 C.hand.SA.WASHB.o24 <- C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24, "C.hand.SA"] # This variable isn't actually used
-C.hand.SA.WASHB.6_12.mcstoc <- mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24, "C.hand.SA"], type = "V", nsv = ndvar())
+C.hand.SA.WASHB.o24.mcstoc <- mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24, "C.hand.SA"], type = "V", nsv = ndvar())
 #C.hand.SA.WASHB.o24.mcdata <- mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V")
 
 qplot(C.hand.SA.WASHB.o24, geom = "histogram", binwidth = 1)
-
-for(i in c(6:23)){ #max(HM.SM$age)
-  assign(paste("C.hand.SA.WASHB.", i, sep = ""), C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"])
-  assign(paste("C.hand.SA.WASHB.", i, ".mcstoc", sep = ""), mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"], type = "V", nsv = ndvar()))
-  # assign(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = ""), mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V"))
-}
-
-# C.hand.SA.WASHB.9.mcdata
-# node    mode  nsv nsu nva variate  min mean median max Nas type outm
-# 1    x numeric 1001   1   1       1 71.1 89.1   89.4 187   5    V each
-
+# Good sizes are around 150
 # # Exposure Factors Handbook, 2011 for 6-12 mo old
 # # 6 to < 12 mo	0.51	5.3	0.02703	270.3	0.024	0.027	120	135 - ONE HAND mean 120, 95th pc 135 - my children are WAY smaller 
-# My est for a 6 mo old are about the same as for a US 1-3 mo old. 
-# --> Check formula
 
 
-## Determine the all-ages hand surface area distribution for mothers
-M.hand.SA.WASHB <- anth.soilMass.wide %>%
-  select(hh, M.hand.SA.mid, M.hand.SA.end) %>%
-  gather(key = round, value = M.hand.SA, M.hand.SA.mid, M.hand.SA.end) %>%
-  select(hh, M.hand.SA) %>%
-  filter(M.hand.SA < 1000 & !is.na(M.hand.SA))
+# # By month-specific age
+# # For the month-specific distributions, can I make normal/weibull for each month?
+# C.hand.SA.WASHB.f6.dist <- fitdist(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo < 6 & !is.na(C.hand.SA.WASHB$age.mo), "C.hand.SA"], "norm", method = "mle")
+# C.hand.SA.WASHB.o24.dist <- fitdist(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo >= 24 & !is.na(C.hand.SA.WASHB$age.mo), "C.hand.SA"], "norm", method = "mle")
+# 
+# hand.SA.find.dist <- function(data, x, dist) {fitdist(data[data$age.mo == x, "C.hand.SA"], dist, method = "mle")}
+# 
+# for(i in c(6:23)){ # may need to avoid 23 months bc there are not children this age: for(i in c(6:13, 18:23))#max(HM.SM$age)
+#   assign(paste("C.hand.SA.WASHB.", i, sep = ""), C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"])
+#   assign(paste("C.hand.SA.WASHB.", i, ".mcstoc", sep = ""), mcstoc(rempiricalD, values = C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"], type = "V", nsv = ndvar()))
+#   # assign(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = ""), mcdata(sample(C.hand.SA.WASHB[C.hand.SA.WASHB$age.mo == i, "C.hand.SA"], size = ndvar(), replace = TRUE), type = "V"))
+# }
 
-qplot(M.hand.SA.WASHB$M.hand.SA, geom = "histogram", binwidth = 1)
+## We determined the dist for WASHB mother's hand SA in line 300 above: M.hand.SA.WASHB.mcstoc
 
-# Dist DOES fit so use empirical
-M.hand.SA.WASHB.dist <- fitdist(M.hand.SA.WASHB$M.hand.SA, "norm", method = "mle")
-M.hand.SA.WASHB.mcstoc <- mcstoc(rnorm, type="V", mean = M.hand.SA.WASHB.dist$estimate[[1]], sd = M.hand.SA.WASHB.dist$estimate[[2]], rtrunc=TRUE, linf=0)
-#M.hand.SA.WASHB.mcdata <- mcdata(sample(M.hand.SA.WASHB$M.hand.SA, size=ndvar(), replace=TRUE),type="V")
 
-################## Calc distribution of loading (mg) ###########
-##### Est load on hands of all WASHB children using the est soil concentration on RO1 hands and the dist of hand SA of the WASHB hands
-# Probablistic multiply by conc (g/cm2) by SA (cm2) of observed children to get est load g soil 
-
-#Don't use the age month-specfic code for children below
-# Age month-specific for children
-for(i in c(4:40)){
-  assign(paste("C.soil.load.", i, sep = ""), soil.C.conc * get(paste("C.hand.SA.WASHB.", i, ".mcstoc", sep = "")))
-  #assign(paste("C.soil.load.", i, sep = ""), soil.C.conc * get(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = "")))
-}
-
-M.soil.load <- soil.M.conc * M.hand.SA.WASHB.mcstoc
 
 
 
@@ -577,26 +543,26 @@ scatter.smooth(feeding.mom.freq$age.vo, feeding.mom.freq$feeding.mom.freq)
 HM.proportions.4 <- HM.proportions %>% filter(age.vo.group == 4) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
 HM.proportions.index.4 <- sample(c(1:nrow(HM.proportions.4)), size = ndvar(), replace = TRUE)
 HM.child.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, c(1,2)], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.child.nd.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, 1], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.child.d.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, 2], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.mom.nd.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, 3], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.mom.d.events.4.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.4[HM.proportions.index.4, 4], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.child.nd.4.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.4[HM.proportions.index.4, 1], type = "VU", nsv = ndvar())
+HM.child.d.4.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.4[HM.proportions.index.4, 2], type = "VU", nsv = ndvar())
+HM.mom.nd.4.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.4[HM.proportions.index.4, 3], type = "VU", nsv = ndvar())
+HM.mom.d.events.4.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.4[HM.proportions.index.4, 4], type = "VU", nsv = ndvar())
 
 HM.proportions.5 <- HM.proportions %>% filter(age.vo.group == 5) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
 HM.proportions.index.5 <- sample(c(1:nrow(HM.proportions.5)), size = ndvar(), replace = TRUE)
 HM.child.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, c(1,2)], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.child.nd.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, 1], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.child.d.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, 2], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.mom.nd.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, 3], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.mom.d.events.5.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.5[HM.proportions.index.5, 4], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.child.nd.5.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.5[HM.proportions.index.5, 1], type = "VU", nsv = ndvar())
+HM.child.d.5.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.5[HM.proportions.index.5, 2], type = "VU", nsv = ndvar())
+HM.mom.nd.5.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.5[HM.proportions.index.5, 3], type = "VU", nsv = ndvar())
+HM.mom.d.events.5.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.5[HM.proportions.index.5, 4], type = "VU", nsv = ndvar())
 
 HM.proportions.6 <- HM.proportions %>% filter(age.vo.group == 6) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
 HM.proportions.index.6 <- sample(c(1:nrow(HM.proportions.6)), size = ndvar(), replace = TRUE)
 HM.child.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, c(1,2)], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.child.nd.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, 1], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.child.d.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, 2], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.mom.nd.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, 3], na.rm = TRUE), type = "VU", nsv = ndvar())
-HM.mom.d.events.6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6[HM.proportions.index.6, 4], na.rm = TRUE), type = "VU", nsv = ndvar())
+HM.child.nd.6.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.6[HM.proportions.index.6, 1], type = "VU", nsv = ndvar())
+HM.child.d.6.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.6[HM.proportions.index.6, 2], type = "VU", nsv = ndvar())
+HM.mom.nd.6.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.6[HM.proportions.index.6, 3], type = "VU", nsv = ndvar())
+HM.mom.d.events.6.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.6[HM.proportions.index.6, 4], type = "VU", nsv = ndvar())
 
 # # code before switching from mcdata to mcstoc(rempiricalD....)
 # HM.proportions.6 <- HM.proportions %>% filter(age.vo.group == 6) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
@@ -624,15 +590,16 @@ HM.SM.12_24.mcstoc <- mcstoc(rweibull, type="VU", shape = HM.SM.f6.dist$estimate
 HM.SM.o24.dist <- fitdist(HM.SM[HM.SM$age >= 24, "HM"], "weibull", method = "mle")
 HM.SM.o24.mcstoc <- mcstoc(rweibull, type="VU", shape = HM.SM.o24.dist$estimate[[1]], scale = HM.SM.o24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
-# # For the month-specific distributions, can I make weibull for each month?
-#find.dist <- function(data, x, dist, who) {fitdist(data[data$age == x, who], dist, method = "mle")} #who is "HM_child" or "HM_mom"
-find.dist <- function(data, x, dist) {fitdist(data[data$age == x, "HM"], dist, method = "mle")} #who is "HM_child" or "HM_mom"
-
-for(i in 6:23){ #max(HM.SM$age)
-  assign(paste("HM.SM.", i, ".dist", sep = ""), find.dist(HM.SM, i, "weibull"))
-  assign(paste("HM.SM.", i, ".mcstoc", sep = ""), mcstoc(rempiricalD, values = HM.SM[HM.SM$age == i, "HM"], type = "VU", nsv = ndvar()))
-  #assign(paste("HM.SM.", i, ".mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM"], size = ndvar(), replace = TRUE), type = "VU"))
-}
+# # # For the month-specific distributions, can I make weibull for each month?
+# # There are so few observations of children for specific months, does it make sense to do this? As of 3.18.17, I think it is better to use age groups
+# #find.dist <- function(data, x, dist, who) {fitdist(data[data$age == x, who], dist, method = "mle")} #who is "HM_child" or "HM_mom"
+# find.dist <- function(data, x, dist) {fitdist(data[data$age == x, "HM"], dist, method = "mle")} #who is "HM_child" or "HM_mom"
+# 
+# for(i in 6:23){ #max(HM.SM$age)
+#   assign(paste("HM.SM.", i, ".dist", sep = ""), find.dist(HM.SM, i, "weibull"))
+#   assign(paste("HM.SM.", i, ".mcstoc", sep = ""), mcstoc(rempiricalD, values = HM.SM[HM.SM$age == i, "HM"], type = "VU", nsv = ndvar()))
+#   #assign(paste("HM.SM.", i, ".mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM"], size = ndvar(), replace = TRUE), type = "VU"))
+# }
 
 
 ####################################################################################################
@@ -694,92 +661,87 @@ HF.child.mcstoc <- mcstoc(rbeta, type="VU", shape1 = 3.7, shape2 = 25, rtrunc=TR
 # Children will be able to put more surface area of their own hands in their mouth 
 # than the surface area of their mother's hands because they have more surface area per unit volume (smaller finger = can put more finger = more SA in mouth)
 
-for(i in c(4:40)){ #max(HM.SM$age)
-  assign(paste("C.hand.SA.WASHB.inMouth.", i, ".mcdata", sep = ""), get(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = "")) * HF.child.mcstoc)
-  #assign(paste("C.hand.SA.WASHB.inMouth.", i, ".mcdata", sep = ""), mcdata(sample(get(paste("C.hand.SA.WASHB.inMouth.", i, sep = "")) , size = ndvar(), replace = TRUE), type = "Vu"))
-}
+## Use age groups rather than age by month. There aren't very many observations for children of specific months, 
+## and some kids who weren't observed may have been a bit bigger or smaller so seems okay to include the entire age group
+## Could change this so XX is by age group, not by month....This is better because below I change it into age groups anyway...
+C.hand.SA.WASHB.inMouth.f6.mcstoc <- C.hand.SA.WASHB.f6.mcstoc * HF.child.mcstoc # mean 12.3, med 11.4, min 0.373, max 50.5
+C.hand.SA.WASHB.inMouth.6_12.mcstoc <- C.hand.SA.WASHB.6_12.mcstoc * HF.child.mcstoc # mean 13.4, med 12.4, min 0.236, max 58.5
+C.hand.SA.WASHB.inMouth.12_24.mcstoc <- C.hand.SA.WASHB.12_24.mcstoc * HF.child.mcstoc # mean 16.2, med 15.0, min 0.278, max 65.6
+C.hand.SA.WASHB.inMouth.o24.mcstoc <- C.hand.SA.WASHB.o24.mcstoc * HF.child.mcstoc # mean 17.5, med 16.2, min 0.304, max 67.7
 
-# HF.ofmom.xx <- C.hand.SA.WASHB.inMouth.xx.mcdata / median(M.hand.SA.WASHB.mcstoc)
-HF.ofmom.6 <- 10.2/ median(M.hand.SA.WASHB.mcstoc)
-HF.ofmom.9 <- 11.1/ median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 6-12 mo
-HF.ofmom.12 <- 11.5/ median(M.hand.SA.WASHB.mcstoc)
-HF.ofmom.18 <- mean(11.5, 14.1)/median(M.hand.SA.WASHB.mcstoc) # use for age.group = 5 12-24 mo
-HF.ofmom.24 <- 14.1/ median(M.hand.SA.WASHB.mcstoc)
-HF.ofmom.30 <- 16.1/ median(M.hand.SA.WASHB.mcstoc) # use for age.grop = 6 24-36 mo
-#C.hand.SA.WASHB.inMouth.30.mcdata
+# HF.ofmom.xx <- C.hand.SA.WASHB.inMouth.xx.mcstoc / median(M.hand.SA.WASHB.mcstoc)
+HF.ofmom.f6 <- C.hand.SA.WASHB.inMouth.f6.mcstoc / median(M.hand.SA.WASHB.mcstoc)
+HF.ofmom.6_12 <- C.hand.SA.WASHB.inMouth.6_12.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 6-12 mo
+HF.ofmom.12_24 <- C.hand.SA.WASHB.inMouth.12_24.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 6-12 mo
+HF.ofmom.o24 <- C.hand.SA.WASHB.inMouth.o24.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 6-12 mo
 
-# ## Could change this so XX is by age group, not by month....This is better because below I change it into age groups anyway...
-# C.hand.SA.WASHB.inMouth.f6.mcdata <- C.hand.SA.WASHB.f6.mcdata * HF.child.mcstoc # mean 12.2, med 11.4
-# C.hand.SA.WASHB.inMouth.6_12.mcdata <- C.hand.SA.WASHB.6_12.mcdata * HF.child.mcstoc # mean 12.2, med 11.3
-# C.hand.SA.WASHB.inMouth.12_24.mcdata <- C.hand.SA.WASHB.12_24.mcdata * HF.child.mcstoc # mean 12.2, med 11.4
-# C.hand.SA.WASHB.inMouth.o24.mcdata <- C.hand.SA.WASHB.o24.mcdata * HF.child.mcstoc # mean 18.4, med 16.8
+## Hand fraction mouthed by specific month of age rather than age group
+# for(i in c(4:40)){ #max(HM.SM$age)
+#   assign(paste("C.hand.SA.WASHB.inMouth.", i, ".mcdata", sep = ""), get(paste("C.hand.SA.WASHB.", i, ".mcdata", sep = "")) * HF.child.mcstoc)
+#   #assign(paste("C.hand.SA.WASHB.inMouth.", i, ".mcdata", sep = ""), mcdata(sample(get(paste("C.hand.SA.WASHB.inMouth.", i, sep = "")) , size = ndvar(), replace = TRUE), type = "Vu"))
+# }
 # 
 # # HF.ofmom.xx <- C.hand.SA.WASHB.inMouth.xx.mcdata / median(M.hand.SA.WASHB.mcstoc)
-# HF.ofmom.f6 <- 12.2/ median(M.hand.SA.WASHB.mcstoc)
-# HF.ofmom.6_12 <- 12.2/ median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 6-12 mo
-# HF.ofmom.12_24 <- 12.2/ median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 6-12 mo
-# HF.ofmom.o24 <- 18.4/ median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 6-12 mo
+# HF.ofmom.6 <- 10.2/ median(M.hand.SA.WASHB.mcstoc)
+# HF.ofmom.9 <- 11.1/ median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 6-12 mo
+# HF.ofmom.12 <- 11.5/ median(M.hand.SA.WASHB.mcstoc)
+# HF.ofmom.18 <- mean(11.5, 14.1)/median(M.hand.SA.WASHB.mcstoc) # use for age.group = 5 12-24 mo
+# HF.ofmom.24 <- 14.1/ median(M.hand.SA.WASHB.mcstoc)
+# HF.ofmom.30 <- 16.1/ median(M.hand.SA.WASHB.mcstoc) # use for age.grop = 6 24-36 mo
+# #C.hand.SA.WASHB.inMouth.30.mcdata
+# 
+# # HF.mom.mcstoc  <- mcstoc(runif, type="V", min = HF.ofmom.6, max = HF.ofmom.30, rtrunc=TRUE, linf=0) 
+# HF.mom.mcstoc.f6  <- mcstoc(runif, type="VU", min = HF.ofmom.6, max = HF.ofmom.6, rtrunc=TRUE, linf=0) 
+# HF.mom.mcstoc.6_12  <- mcstoc(runif, type="VU", min = HF.ofmom.6, max = HF.ofmom.12, rtrunc=TRUE, linf=0) 
+# HF.mom.mcstoc.12_24  <- mcstoc(runif, type="VU", min = HF.ofmom.12, max = HF.ofmom.24, rtrunc=TRUE, linf=0) 
+# HF.mom.mcstoc.24_36  <- mcstoc(runif, type="VU", min = HF.ofmom.24, max = HF.ofmom.30, rtrunc=TRUE, linf=0) 
 
 
-# HF.mom.mcstoc  <- mcstoc(runif, type="V", min = HF.ofmom.6, max = HF.ofmom.30, rtrunc=TRUE, linf=0) 
-HF.mom.mcstoc.f6  <- mcstoc(runif, type="VU", min = HF.ofmom.6, max = HF.ofmom.6, rtrunc=TRUE, linf=0) 
-HF.mom.mcstoc.6_12  <- mcstoc(runif, type="VU", min = HF.ofmom.6, max = HF.ofmom.12, rtrunc=TRUE, linf=0) 
-HF.mom.mcstoc.12_24  <- mcstoc(runif, type="VU", min = HF.ofmom.12, max = HF.ofmom.24, rtrunc=TRUE, linf=0) 
-HF.mom.mcstoc.24_36  <- mcstoc(runif, type="VU", min = HF.ofmom.24, max = HF.ofmom.30, rtrunc=TRUE, linf=0) 
 
-# HMRE	Hand mouthing removal(transfer) eff.	-	day	beta	2	8				Cohen Hubal 2008 as presented in Ozkaynak 2011
+######################## HMRE	Hand mouthing removal(transfer) efficiency #######################
+# HMRE per	day	beta	2	8				Cohen Hubal 2008 as presented in Ozkaynak 2011
 HMRE.mcstoc <- mcstoc(rbeta, type="VU", shape1 = 2, shape2 = 8, rtrunc=TRUE, linf=0)
 
-### For now, for children under 6 mo, use the soil loading est for children 4 mo old
-# C.soil.simple.f6 <- ((C.soil.load.4 * HM.child.f6.mcdata * HF.child.mcstoc) + (M.soil.load * (HM.other.nd.f6.mcdata + HM.other.d.f6.mcdata) * HF.mom.mcstoc))  * HMRE.mcstoc
-# C.soil.simple.o24 <- ((C.soil.load.30 * HM.child.o24.mcdata * HF.child.mcstoc) + (M.soil.load * (HM.other.nd.o24.mcdata + HM.other.d.o24.mcdata) * HF.mom.mcstoc))  * HMRE.mcstoc
-# 
-# for(i in 6:23){
-#   assign(paste("C.soil.simple.", i, sep = ""), ((get(paste("C.soil.load.", i, sep = "")) * get(paste("HM.SM.", i, ".child.mcdata", sep = ""))) + 
-#                                                   (M.soil.load * get(paste("HM.SM.", i, ".mom.mcdata", sep = "")))) * HF.mcstoc * HMRE.mcstoc)
-#   #C.soil.simple.10 <- ((C.soil.load.10 * HM.SM.10.child.mcdata) + (M.soil.load * HM.SM.10.mom.mcdata)) * HF.mcstoc * HMRE.mcstoc
-# }
 
+####################### Duration awake each day #########################3
 # From Gallan, 2011
-awake.hr.3 <- 24 - mcstoc(rnorm, type = "V", mean = 13.6, sd = 2.1, rtrunc=TRUE, linf=0) # use for f6
-awake.hr.6 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 2.1, rtrunc=TRUE, linf=0) # use for 6, 7
-awake.hr.9 <- 24 - mcstoc(rnorm, type = "V", mean = 12.6, sd = 1.6, rtrunc=TRUE, linf=0) # use for 8, 9, 10
-awake.hr.12 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 1.4, rtrunc=TRUE, linf=0) # use for 11, 12
+# By age group
+## Seems a bit anamolous that hours slept is lower for 9-month-old children than 6 and 12 month old children so I'll use the 6- and 12-month-old values
+awake.hr.f6 <- 24 - mcstoc(rnorm, type = "V", mean = 13.6, sd = 2.1, rtrunc=TRUE, linf=0) # use for f6
+awake.hr.6_12 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 1.3, rtrunc=TRUE, linf=0) # use for 6_12
 awake.hr.12_24 <- 24 - mcstoc(rnorm, type = "V", mean = 12.6, sd = 1.3, rtrunc=TRUE, linf=0) # use for 12-24
 awake.hr.24_36 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 24-36
 awake.hr.36_48 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 36-48
 
 
-
-# soil.C.conc <- mcdata(sample(soil.C.conc.long$soil.C.conc, size=ndvar(), replace=TRUE),type="V")
-# 
-# for(i in c(4:40)){
-# }
-# 
-# M.soil.load <- (soil.M.load.mcdata / M.hand.SA.WASHB.end.mcstoc) * M.hand.SA.WASHB.mcstoc
+# # By specific month of age
+# awake.hr.3 <- 24 - mcstoc(rnorm, type = "V", mean = 13.6, sd = 2.1, rtrunc=TRUE, linf=0) # use for f6
+# awake.hr.6 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 2.1, rtrunc=TRUE, linf=0) # use for 6, 7
+# awake.hr.9 <- 24 - mcstoc(rnorm, type = "V", mean = 12.6, sd = 1.6, rtrunc=TRUE, linf=0) # use for 8, 9, 10 
+# awake.hr.12 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 1.4, rtrunc=TRUE, linf=0) # use for 11, 12
 
 
 
 ########## Eval the mc model ###########
 child.hand.soil.concentration.mg.cm2 <- soil.C.conc
-child.hand.surface.area.cm2 <- C.hand.SA.WASHB.o24.mcstoc  #C.hand.SA.WASHB.o24.mcdata
-child.hand.mouth.frequency.events.hr <- HM.child.o24.mcstoc  #HM.child.o24.mcdata
+child.hand.surface.area.cm2 <- C.hand.SA.WASHB.9.mcstoc  #C.hand.SA.WASHB.o24.mcstoc 
+child.hand.mouth.frequency.events.hr <- HM.child.6_12.mcstoc  #HM.child.o24.mcstoc
 child.hand.fraction.mouthed <- HF.child.mcstoc
 mom.hand.soil.load.mg <- soil.M.load.mcstoc
 #mom.soil.sample.hand.surface.area.cm2 <- M.hand.SA.WASHB.end.mcstoc
 mom.hand.surface.area.cm2 <- M.hand.SA.WASHB.mcstoc
-mom.hand.mouth.nonfood.frequency.events.hr <- HM.other.nd.o24.mcstoc  #HM.other.nd.o24.mcdata
-mom.feeding.frequency.events.hr <- HM.other.d.o24.mcstoc  #HM.other.d.o24.mcdata
-mom.hand.fraction.mouthed <- HF.mom.mcstoc.24_36  #HF.mom.mcstoc.24_30   #HF.mom.mcstoc.f6 is only one value so not good to use --> use HF.mom.mcstoc.6_12 instead, even though it is for the wrong age group
+mom.hand.mouth.nonfood.frequency.events.hr <- HM.other.nd.6_12.mcstoc  #HM.other.nd.o24.mcstoc
+mom.feeding.frequency.events.hr <- HM.other.d.6_12.mcstoc  #HM.other.d.o24.mcstoc
+mom.hand.fraction.mouthed <- HF.mom.mcstoc.6_12  #HF.mom.mcstoc.24_36   #HF.mom.mcstoc.f6 is only one value so not good to use --> use HF.mom.mcstoc.6_12 instead, even though it is for the wrong age group
 # > HF.mom.mcstoc.f6
 # node    mode  nsv nsu nva variate    min   mean median    max Nas type outm
-# 1    x numeric 1001   1   1       1 0.0317 0.0317 0.0317 0.0317   0    V each
+# 1    x numeric 1001   1   1       1 0.0317 0.0317 0.0317 0.0317   0    VU each
 # 
 # > HF.mom.mcstoc.6_12
 # node    mode  nsv nsu nva variate    min   mean median    max Nas type outm
-# 1    x numeric 1001   1   1       1 0.0317 0.0337 0.0338 0.0358   0    V each
+# 1    x numeric 1001   1   1       1 0.0317 0.0337 0.0338 0.0358   0    VU each
 saliva.removal.efficiency <- HMRE.mcstoc
-hours.awake <- awake.hr.24_36   # awake.hr.24_36
+hours.awake <- awake.hr.9   # awake.hr.24_36
 #amt.soil.ingested.mg.day <- C.soil.simple.o24
 
 soil.test3 <- mcmodel({ 
@@ -789,14 +751,16 @@ soil.test3 <- mcmodel({
 })
 
 res3 <- evalmcmod(soil.test3, nsv=ndvar(), nsu=ndunc(), seed=seed)
-print(res3, digits = digits)
-
+print(res3, digits = 2)
 plot(res3, prec = 0.001, stat = c("median", "mean"), lim = c(0.025, 0.25, 0.75, 0.975), na.rm =
        TRUE, griddim = NULL, xlab = NULL, ylab = "Fn(x)", main = "", draw = TRUE, paint = TRUE)
-tor.res3 <- tornado(res3, use = "complete.obs" )
-plot(tor.res3)
 summary(res3)
 hist(res3)
+
+tor.res3 <- tornado(res3, output = length(res3), use = "complete.obs", method = "spearman", lim = c(0.025, 0.975))
+plot(tor.res3)
+print(tor.res3)
+
 
 # Report the mean and median of the exposure means with a 95% confidence interval (CI95).
 mean.expo <- sapply(1:ndunc(), function(j) mean(expo.ev1$expo.mc1[, j, ]))
