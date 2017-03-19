@@ -754,10 +754,7 @@ tornado(x, output=length(x), use=all.obs, method=c(spearman, kendall,pearson), l
 tornadounc(mc,output = length(mc), quant=c(0.5,0.75,0.975), use = all.obs,
            method=c(spearman,kendall,pearson), ...)
 
-tornado(soil.test_f6, use = "complete.obs") #  method = "spearman", lim = c(0.025, 0.975)
-
-
-tor.eatSoil_f6  <- tornado(eatSoil_f6 , output = length(res3), use = "complete.obs", method = "spearman", lim = c(0.025, 0.975))
+tor.eatSoil_f6  <- tornado(eatSoil_f6, use = "pairwise.complete.obs") #  I'd prefer to use complete.obs rather than pairwise (I think) but this doesn't work. method = "spearman", lim = c(0.025, 0.975)
 plot(tor.eatSoil_f6 )
 print(tor.eatSoil_f6 )
 
@@ -792,9 +789,9 @@ plot(eatSoil_6_12 , prec = 0.001, stat = c("median", "mean"), lim = c(0.025, 0.2
 summary(eatSoil_6_12 )
 hist(eatSoil_6_12 )
 
-# tor.eatSoil_6_12  <- tornado(eatSoil_6_12 , output = length(res3), use = "complete.obs", method = "spearman", lim = c(0.025, 0.975))
-# plot(tor.eatSoil_6_12 )
-# print(tor.eatSoil_6_12 )
+tor.eatSoil_6_12  <- tornado(eatSoil_6_12, use = "pairwise.complete.obs") #  I'd prefer to use complete.obs rather than pairwise (I think) but this doesn't work. method = "spearman", lim = c(0.025, 0.975)
+plot(tor.eatSoil_6_12 )
+print(tor.eatSoil_6_12 )
 
 # Report the mean and median of the exposure means with a 95% confidence interval (CI95).
 mean.expo <- sapply(1:ndunc(), function(j) mean(eatSoil_6_12$soil.test_6_12[, j, ]))
@@ -827,9 +824,9 @@ plot(eatSoil_12_24 , prec = 0.001, stat = c("median", "mean"), lim = c(0.025, 0.
 summary(eatSoil_12_24 )
 hist(eatSoil_12_24 )
 
-# tor.eatSoil_12_24  <- tornado(eatSoil_12_24 , output = length(res3), use = "complete.obs", method = "spearman", lim = c(0.025, 0.975))
-# plot(tor.eatSoil_12_24 )
-# print(tor.eatSoil_12_24 )
+tor.eatSoil_12_24  <- tornado(eatSoil_12_24, use = "pairwise.complete.obs") #  I'd prefer to use complete.obs rather than pairwise (I think) but this doesn't work. method = "spearman", lim = c(0.025, 0.975)
+plot(tor.eatSoil_12_24 )
+print(tor.eatSoil_12_24 )
 
 # Report the mean and median of the exposure means with a 95% confidence interval (CI95).
 mean.expo <- sapply(1:ndunc(), function(j) mean(eatSoil_12_24$soil.test_12_24[, j, ]))
@@ -862,9 +859,9 @@ plot(eatSoil_o24 , prec = 0.001, stat = c("median", "mean"), lim = c(0.025, 0.25
 summary(eatSoil_o24 )
 hist(eatSoil_o24 )
 
-# tor.eatSoil_o24  <- tornado(eatSoil_o24 , output = length(res3), use = "complete.obs", method = "spearman", lim = c(0.025, 0.975))
-# plot(tor.eatSoil_o24 )
-# print(tor.eatSoil_o24 )
+tor.eatSoil_o24  <- tornado(eatSoil_o24, use = "pairwise.complete.obs") #  I'd prefer to use complete.obs rather than pairwise (I think) but this doesn't work. method = "spearman", lim = c(0.025, 0.975)
+plot(tor.eatSoil_o24 )
+print(tor.eatSoil_o24 )
 
 # Report the mean and median of the exposure means with a 95% confidence interval (CI95).
 mean.expo <- sapply(1:ndunc(), function(j) mean(eatSoil_o24$soil.test_o24[, j, ]))
@@ -880,14 +877,22 @@ plot(eatSoil_o24$soil.test_o24, main = "Daily Soil Consumption by Children in Ru
 
 print(eatSoil_f6 , digits = 2)
 summary(eatSoil_f6 )
+print(tor.eatSoil_f6 )
+
 eatSoil_summary_f6 <- summary(eatSoil_f6 )
 write.csv(eatSoil_summary_f6, "C:/Users/Laura Kwong/Box Sync/VO Soil/eatSoil_summary_f6.csv")
 
 print(eatSoil_6_12 , digits = 2)
 summary(eatSoil_6_12 )
+print(tor.eatSoil_6_12 )
+
 
 print(eatSoil_12_24 , digits = 2)
 summary(eatSoil_12_24 )
+print(tor.eatSoil_12_24 )
+
 
 print(eatSoil_o24 , digits = 2)
 summary(eatSoil_o24 )
+print(tor.eatSoil_o24 )
+
