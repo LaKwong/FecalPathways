@@ -528,6 +528,7 @@ names(SO.HM.SM) <- c("hh", "round", "age", "age.group", "HM", "HM_d", "HM_nd", "
 # Load HM frequencies and soil ingestion frequencies for each individual, not hh
 ## Video Observations 
 vo123.objclass.base <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.11.objclass.csv")
+# vo123.objclass.base <- vo123.objclass.base[!is.na(vo123.objclass.base$round),]
 VO.HM.SM <- vo123.objclass.base %>%
   filter(actobj.class %in% c("Mouth_hands", "Mouth_hands_d", "Mouth_hands_nd", "Mouth_soil")) %>%
   select(hh, round, age.mo, age.group, actobj.class, freq) %>%
@@ -992,7 +993,7 @@ names(SO.OM) <- c("hh", "round", "age", "age.group", "OM")
 
 ## Video observations
 vo123.obj.base <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.11.obj.csv")
-
+vo123.obj.base <- vo123.obj.base[!is.na(vo123.obj.base$round),]
 VO.OM.sepfreqs <- vo123.obj.base %>%
   filter(actobj %in% c("Mouth_PlantMaterial", "Mouth_Metal", "Mouth_Paper", "Mouth_Plastic", "Mouth_OtherObject", "Mouth_Wood/Bricks")) %>% # Omit Mouth_Cloth & Mouth_Utensil
   select(hh, round, age.mo, age.group, actobj, freq) %>%
@@ -1074,16 +1075,6 @@ OMRE.mcstoc <- mcstoc(rbeta, type = "V", shape1 = 2, shape2 = 8, rtrunc=TRUE, li
 ######################################################################################
 
 ####################### Amount of soil ingested per contact #######################
-
-
-#triangular distribution(min = 8   , max =  70 , mode =  20 ) --> beta distribution
-fitdist(rtriangle(100000, 0.07, 0.70, 0.20), "beta", method = "mle") # For a triangular dist, the values must be 0-1
-hist(rtriangle(10000, 0.07, 0.70, 0.20)*100)
-hist(rbeta(10000, 3.70, 7.73)*100)
-summary(rbeta(10000, 3.70, 7.73)*100)
-
-SM.ingested.amt.mcstoc <- mcstoc(rbeta, type = "V", shape1 = 3.86, shape2 = 7.93, rtrunc=TRUE, linf=0)*100
-
 ###### Lick contacts 
 # Huang 2015 Shape dynamics
 # How many licks does it take to get to the centre of a lollipop?
@@ -1091,9 +1082,9 @@ SM.ingested.amt.mcstoc <- mcstoc(rbeta, type = "V", shape1 = 3.86, shape2 = 7.93
 
 # Hard candy density 
 # (https://prezi.com/pii7hfuaq-vz/jolly-good-metrics/)
-# Jolly rancher mass = 6.3 g, width = 1.5 cm, length = 2.5 cm, height = 1 cm  vol = 3.75 cm; density = 6.3g / 3.75 cm2 = 1.68 g/cm3
+# Jolly rancher mass = 6.3 g, width = 1.5 cm, length = 2.5 cm, height = 1 cm, vol = 3.75 cm; density = 6.3g / 3.75 cm2 = 1.68 g/cm3
 # 
-# Mass of Huang's hard candy, r = 1 cm, vol = 4/3 * pi * r^3 = 4/3*pi = 4.18879 cm3  mass = density * vol = 1.68 g/ cm3 * 4.18879 cm3 = 7.037 g 
+# Mass of Huang's hard candy, r = 1 cm, vol = 4/3 * pi * r^3 = 4/3*pi = 4.18879 cm3, mass = density * vol = 1.68 g/ cm3 * 4.18879 cm3 = 7.037 g 
 # 
 # 7.037 g/ approx 1000 licks = 0.007037/licks = 7.037 mg/licks
 
@@ -1102,6 +1093,22 @@ SM.ingested.amt.mcstoc <- mcstoc(rbeta, type = "V", shape1 = 3.86, shape2 = 7.93
 # mass of a grain of rice = 1/64 g = 0.015625 g 
 # Volume of a small grain of rice is 0.02 cm3, a large grain of rice is 0.07 cm3
 # Assuming soil density of 1.0 g/cm3 --> each ingestion of a small piece of soil would be 0.02 g = 20 mg or 0.07 g = 70 mg of soil.
+
+## BIg change made 26 May 2017: I had been using a triangular dist in mg improperly converted to g, currently all number are in the correct g amts
+#triangular distribution(min = 0.007  g , max =  0.070  g , mode =  0.020  mg) --> beta distribution
+fitdist(rtriangle(100000, 0.007, 0.070, 0.020), "beta", method = "mle") # For a triangular dist, the values must be 0-1
+hist(rtriangle(10000, 0.007, 0.070, 0.020))
+
+# Fitting of the distribution ' beta ' by maximum likelihood 
+# Parameters:
+#   estimate Std. Error
+# shape1   5.295952 0.02297762
+# shape2 158.621280 0.72073235
+hist(rbeta(10000, 5.30, 158.62)) 
+summary(rbeta(10000, 5.30, 158.62))
+summary(rtriangle(100000, 0.007, 0.070, 0.020))
+SM.ingested.amt.mcstoc <- mcstoc(rbeta, type = "V", shape1 = 5.30, shape2 = 158.62, rtrunc=TRUE, linf=0)*100
+
 
 
 
@@ -1197,11 +1204,18 @@ soil.survey %>%
 # 12-24 mo: oneday.recall: 50.0% --> 50.0/(24 - rnorm(ndvar(), 12.6, 1.3)) = 0.03968 # hr asleep mean = 12.6, sd = 1.3
 # 24-36 mo:   oneday.recall: 27.4% --> 27.4/(24 - rnorm(ndvar(), 12.0, 1.2)) = 0.022833  # hr asleep mean = 12.0, sd = 1.2
 
-# percent consumers/day divided by the number of hours awake per day --> to get this into a fraction between 0 and 1, must divide by 100
-SM.consumerfrac.p1.f6 <- (8.3/(24 - rnorm(ndvar, 13.6, 2.1)))/100 
-SM.consumerfrac.p1.6_12 <- (52.5/(24 - rnorm(ndvar, 12.9, 1.3)))/100
-SM.consumerfrac.p1.12_24 <- (50.0/(24 - rnorm(ndvar, 12.6, 1.3)))/100
-SM.consumerfrac.p1.24_36 <- (27.4/(24 - rnorm(ndvar, 12.0, 1.2)))/100
+## Don't do soil consumption by hour, just do by day
+
+SM.consumerfrac.p1.f6 <- (8.3)/100 
+SM.consumerfrac.p1.6_12 <- (52.5)/100
+SM.consumerfrac.p1.12_24 <- (50.0)/100
+SM.consumerfrac.p1.24_36 <- (27.4)/100
+
+# # percent consumers/day divided by the number of hours awake per day --> to get this into a fraction between 0 and 1, must divide by 100
+# SM.consumerfrac.p1.f6 <- (8.3/(24 - rnorm(ndvar(), 13.6, 2.1)))/100 
+# SM.consumerfrac.p1.6_12 <- (52.5/(24 - rnorm(ndvar(), 12.9, 1.3)))/100
+# SM.consumerfrac.p1.12_24 <- (50.0/(24 - rnorm(ndvar(), 12.6, 1.3)))/100
+# SM.consumerfrac.p1.24_36 <- (27.4/(24 - rnorm(ndvar(), 12.0, 1.2)))/100
 
 ######################### Number of direct soil-to-mouth contacts ####################
 # Soil ingestion rate for each child within each age group (not summarized by age group)
@@ -1226,8 +1240,6 @@ SM.freq.1.24_36 <- SM.freq.1.12_24  # mcstoc(rlnorm, 0.1, 0.2, type = "V", nsv =
 
 SM.freq.0 <- mcdata(0, type = "V")
 
-length(c(1 - SM.consumerfrac.p1.f6, SM.consumerfrac.p1.f6))
-length(unlist(list("0" = SM.freq.0, "1" = SM.freq.1.f6)))
 SM.fracfreq.f6 <- mcprobtree(c(1 - SM.consumerfrac.p1.f6, SM.consumerfrac.p1.f6), list("0" = SM.freq.0, "1" = SM.freq.1.f6), type = "V")
 SM.fracfreq.6_12 <- mcprobtree(c(1 - SM.consumerfrac.p1.6_12, SM.consumerfrac.p1.6_12), list("0" = SM.freq.0, "1" = SM.freq.1.6_12), type = "V")
 SM.fracfreq.12_24 <- mcprobtree(c(1 - SM.consumerfrac.p1.12_24, SM.consumerfrac.p1.12_24), list("0" = SM.freq.0, "1" = SM.freq.1.12_24), type = "V")
@@ -1257,6 +1269,9 @@ soil.direct.6_12 <-  SM.fracfreq.6_12 * SM.ingested.amt.mcstoc
 soil.direct.12_24 <- SM.fracfreq.12_24 * SM.ingested.amt.mcstoc
 soil.direct.24_36 <-  SM.fracfreq.24_36 * SM.ingested.amt.mcstoc
 
+##########################################################################
+
+######## Convert times per hour to times per day by selecting DIFF hour freq for each hour awake during the day then summing ###
 
 
 ####################### Duration awake each day #########################
@@ -1276,6 +1291,25 @@ awake.hr.24_36 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=T
 # awake.hr.6 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 2.1, rtrunc=TRUE, linf=0) # use for 6, 7
 # awake.hr.9 <- 24 - mcstoc(rnorm, type = "V", mean = 12.6, sd = 1.6, rtrunc=TRUE, linf=0) # use for 8, 9, 10 
 # awake.hr.12 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 1.4, rtrunc=TRUE, linf=0) # use for 11, 12
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ########## Eval the mc model ###########
 # parameter.names <- c("child.hand.soil.concentration.mg.cm2", "child.hand.surface.area.cm2", 
