@@ -505,10 +505,10 @@ names(SO.allObs)
 # Create a table with the FREQ of hand-to-mouth contacts, starting with hand_m_tot_freq
 SO.HM.SM <- SO.allObs %>%
   filter(location == 3) %>%
-  mutate(round = "so1", Mouth_hands_child_nd = NA, Mouth_hands_child_d = NA, Mouth_hands_mom_nd = NA, Mouth_hands_mom_d = NA, mom_feeding_freq = NA) %>%
-  select(participant_id,  round, age_SO_mo, age_SO_group, hand_m_tot, hand_m_tot_freq, Mouth_hands_child_nd, Mouth_hands_child_d, Mouth_hands_mom_nd, Mouth_hands_mom_d, mom_feeding_freq, soil_m_tot_freq, soil_h_m_tot_freq)
+  mutate(round = "so1", Mouth_hands_child = 0, Mouth_hands_child_nd = 0, Mouth_hands_child_d = 0, Mouth_hands_mom_nd = 0, Mouth_hands_mom_d = 0) %>%
+  select(participant_id,  round, age_SO_mo, age_SO_group, hand_m_tot, hand_m_tot_freq, Mouth_hands_child, Mouth_hands_child_nd, Mouth_hands_child_d, Mouth_hands_mom_nd, Mouth_hands_mom_d,  soil_m_tot_freq, soil_h_m_tot_freq)
 
-names(SO.HM.SM) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq", "m_feeding_freq", "SM_freq", "SHM_freq")
+names(SO.HM.SM) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq",  "SM_freq", "SHM_freq")
 
 # ############ SO Data if I want to use the age group ################3
 # ## From SO of 149 kids
@@ -528,10 +528,15 @@ names(SO.HM.SM) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "
 
 # Load HM frequencies and soil ingestion frequencies for each individual, not hh
 ## Video Observations 
+hands_summary <- read.csv("C:/Users/Tareq/Box Sync/VO R123/hands_summary.csv")
+hands_summary <- hands_summary %>%
+  mutate(hh = as.factor(hh), round = vo.num, age = age.vo, age.group = age.vo.group) %>%
+  replace(is.na(.), 0)
+  
 VO.HM.SM.handscontacts <- hands_summary %>%
-  mutate(m_feeding_freq = NA, soil_m_tot_freq = NA, soil_h_m_tot_freq = NA) %>% # soil contacts are not recorded in hands_summary so soil_m_tot_freq and soil_h_m_tot_freq are NA
-  select(hh, vo.num, age.vo, age.vo.group, count_allhands, freq_allhands, freq_child_hands_nd, freq_child_hands_d, freq_other_hands_nd, freq_other_hands_d, m_feeding_freq, soil_m_tot_freq, soil_h_m_tot_freq)
-names(VO.HM.SM.handscontacts) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq", "m_feeding_freq", "SM_freq", "SHM_freq")
+  mutate(m_feeding_freq = 0, soil_m_tot_freq = 0, soil_h_m_tot_freq = 0) %>% # soil contacts are not recorded in hands_summary so soil_m_tot_freq and soil_h_m_tot_freq are NA
+  select(hh, round, age, age.group, count_allhands, freq_allhands, freq_child_hands, freq_child_hands_nd, freq_child_hands_d, freq_other_hands_nd, freq_other_hands_d, soil_m_tot_freq, soil_h_m_tot_freq)
+names(VO.HM.SM.handscontacts) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq", "SM_freq", "SHM_freq")
 
 # to get the soil contacts, use vo123.objclass.base
 vo123.objclass.base <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.11.objclass.csv")
@@ -539,68 +544,18 @@ VO.HM.SM.soilcontacts <- vo123.objclass.base %>%
   filter(actobj.class %in% c("Mouth_soil")) %>%
   select(hh, round, age.mo, age.group, actobj.class, freq) %>%
   spread(actobj.class, freq) %>%
-  mutate(HM_count = NA, HM_freq = NA, HM_c_nd_freq = NA, HM_c_d_freq = NA, HM_m_nd_freq = NA, HM_m_d_freq = NA, m_feeding_freq = NA, soil_h_m_tot_freq = NA) %>%
-  select(hh, round, age.mo, age.group, HM_count, HM_freq, HM_c_nd_freq, HM_c_d_freq, HM_m_nd_freq, HM_m_d_freq, m_feeding_freq, Mouth_soil, soil_h_m_tot_freq)
-names(VO.HM.SM.soilcontacts) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq", "m_feeding_freq", "SM_freq", "SHM_freq")
+  mutate(soil_h_m_tot_freq = 0) %>%
+  replace(is.na(.), 0) %>%
+  select(hh, round, Mouth_soil, soil_h_m_tot_freq)
+names(VO.HM.SM.soilcontacts) <- c("hh", "round", "SM_freq", "SHM_freq")
 VO.HM.SM.soilcontacts$hh <- as.factor(VO.HM.SM.soilcontacts$hh)
 
-VO.HM.SM <- left_join(VO.HM.SM.handscontacts[,c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq", "m_feeding_freq")], VO.HM.SM.soilcontacts[,c("hh", "round", "SM_freq", "SHM_freq")], by = c("hh", "round"))
+VO.HM.SM <- left_join(VO.HM.SM.handscontacts[,c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq")], VO.HM.SM.soilcontacts[,c("hh", "round", "SM_freq", "SHM_freq")], by = c("hh", "round"))
 
+HM.SM.prefeedingevents <- rbind(SO.HM.SM, VO.HM.SM)
 
-# vo123.objclass.base <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.11.objclass.csv")
-# # vo123.objclass.base <- vo123.objclass.base[!is.na(vo123.objclass.base$round),]
-# VO.HM.SM <- vo123.objclass.base %>%
-#   filter(actobj.class %in% c("Mouth_hands", "Mouth_hands_d", "Mouth_hands_nd", "Mouth_soil")) %>%
-#   select(hh, round, age.mo, age.group, actobj.class, freq) %>%
-#   spread(actobj.class, freq) %>%
-#   mutate(soil_h_m_tot_freq = NA)
-# 
-# names(VO.HM.SM) <- c("hh", "round", "age", "age.group", "HM", "HM_d", "HM_nd", "SM", "SHM")
-
-
-HM.SM <- rbind(SO.HM.SM, VO.HM.SM) %>%
-  arrange(age, round, hh)
-
-scatter.smooth(HM.SM[,c("age", "HM")])
-scatter.smooth(HM.SM[,c("age", "SM")])
-
-## Be CAREFUL about FREQUENCIES vs COUNTS
-
-
-################### Will it change anything if I do fractional months?
-
-########### Assign a hand mouthing frequency to each child in the WASHB data set based ONLY on age in months, not on location, or any other parameters ###############
-###### Double check that in SO I didn't find any child or hh characteristics except age to be imp #####
-
-#### Alternative methods to decide how the hand mouthing frequency should be set for children of diff ages (mo)
-
-# Create a weibull distribution for each age.mo --> I'll try this method first
-# But make wieull dist for children <6 mo because not many data point and this is the cutoff for exclusive breatfeeding - should have very little hands_d here. 
-# And make a weibull dist for children >= 24 mo because lack data and expect more similar after this age
-
-################### Don't have the data to show more similar from 24-36 mo old
-
-# Alternative methods:
-# Create a weibull distriution for each age.group and apply to each age group 
-# Create a weibull distriution for each age.group and apply to each age month
-# Assign the median or median freq by age.mo 
-
-# ## For all hand_mouthing (use for round SO)
-# HM.SM.f6.dist <- fitdist(HM.SM[HM.SM$age < 6, "HM"], "weibull", method = "mle")
-# HM.SM.24_36.dist <- fitdist(HM.SM[HM.SM$age >= 24, "HM"], "weibull", method = "mle")
-# 
-# # # For the month-specific distributions, can I make weibull for each month?
-# find.dist <- function(data, x, dist) {fitdist(data[data$age == x, "HM"], dist, method = "mle")}
-# 
-# for(i in 6:23){ #max(HM.SM$age)
-#   assign(paste("HM.SM.", i, ".dist", sep = ""), find.dist(HM.SM, i, "weibull"))
-#   assign(paste("HM.SM.", i, ".mcdata", sep = ""), mcdata(sample(HM.SM[HM.SM$age == i, "HM"], size = ndvar(), replace = TRUE), type = "V"))
-# }
-
-
-#### Do NOT calc HM_d_child, HM_d_mother, HM_nd_child, HM_nd_mother on only the children in the video obs 
-## Instead use HM * MONTH-SPECIFIC % HM_d_child, HM * MONTH-SPECIFIC % HM_d_mother, etc to estimate these values for all Structured observation kids. 
-# Problem will be that ages don't align
+scatter.smooth(HM.SM[,c("age", "HM_freq")])
+scatter.smooth(HM.SM[,c("age", "SM_freq")])
 
 
 # For all the kids that only have total HM values from the SO, need to est child, mom_d, mom_nd
@@ -608,21 +563,20 @@ scatter.smooth(HM.SM[,c("age", "SM")])
 # For the other children, use the actual child, mom_d, and mom_nd recorded in the VO
 
 
-## For kids who only have SO values for total HM
-
-hands_summary <- read.csv("C:/Users/Tareq/Box Sync/VO R123/hands_summary.csv")
-hands_summary$hh <- as.factor(hands_summary$hh)
-
 ### Must change to reflect that most mom HM contacts do not have recontam so really only want number of indep feeding events
 feeding.mom.freq <- read.csv("C:/Users/Tareq/Box Sync/VO R123/feeding.mom.freq.csv")
 feeding.mom.freq <- feeding.mom.freq %>%
-  select(-X, -X.1)
-feeding.mom.freq$hh <- as.factor(feeding.mom.freq$hh)
+  mutate(hh = as.factor(hh)) %>%
+  select(-X, -X.1) 
+names(feeding.mom.freq) <- c("round", "hh", "age", "hh_feeding_events", "awake.h", "m_feeding_freq")
 
-HM.proportions <- left_join(hands_summary, feeding.mom.freq, by = c("vo.num", "hh", "age.vo")) %>%
-  select(vo.num, hh, age.vo, age.vo.group, pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pc_other_hands_d, feeding.mom.freq)
+HM.SM <- left_join(HM.SM.prefeedingevents, feeding.mom.freq[,c("hh", "round", "m_feeding_freq")], by = c("hh", "round")) %>%
+  arrange(age, round, hh)
 
-scatter.smooth(feeding.mom.freq$age.vo, feeding.mom.freq$feeding.mom.freq)
+HM.proportions <- left_join(hands_summary, feeding.mom.freq, by = c("round", "hh", "age")) %>%
+  select(round, hh, age, age.group, pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pf_other_hands_d)
+
+scatter.smooth(HM.SM$age, HM.SM$m_feeding_freq)
 # There is no trend by age, so use feeding freq from any age for a child of any age
 
 ## Before 26 May 2017 I was calculatin ghtis WRONG - I had the proportion but did not multiply by the actual FREQUENCY of mouthing....
@@ -632,45 +586,69 @@ scatter.smooth(feeding.mom.freq$age.vo, feeding.mom.freq$feeding.mom.freq)
 # Then create a random sample of the indicies
 # Select the random index of the entire row and get the child_nd, child_d, mom_nd, or feeding.freq col and save as mcdata
 
-HM.proportions.f6 <- HM.proportions %>% filter(age.vo.group == 4) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
-HM.proportions.index.f6 <- sample(c(1:nrow(HM.proportions.f6)), size = ndvar(), replace = TRUE)
-HM.child.f6.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.f6[HM.proportions.index.f6, c(1,2)], na.rm = TRUE), type = "V", nsv = ndvar())
-HM.child.nd.f6.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.f6[HM.proportions.index.f6, 1], type = "V", nsv = ndvar())
-HM.child.d.f6.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.f6[HM.proportions.index.f6, 2], type = "V", nsv = ndvar())
-HM.mom.nd.f6.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.f6[HM.proportions.index.f6, 3], type = "V", nsv = ndvar())
-HM.mom.d.events.f6.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.f6[HM.proportions.index.f6, 4], type = "V", nsv = ndvar())
+# There are so few kids under 6 months that the proportion shouldn't be generalized, use the kids <6 and 6_12 mo to determine the proportions
+HM.proportions.f6 <- HM.proportions %>% filter(age.group %in% c(2, 3,4)) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pf_other_hands_d) /100
+HM.proportions.index.f6 <- sample(c(1:nrow(HM.proportions.f6)), size = nrow(HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3),]), replace = TRUE)
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3), "HM_c_nd_freq"] <- HM.proportions.f6[HM.proportions.index.f6, "pf_child_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3),"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3), "HM_c_d_freq"] <- HM.proportions.f6[HM.proportions.index.f6, "pf_child_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3),"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3), "HM_m_nd_freq"] <- HM.proportions.f6[HM.proportions.index.f6, "pf_other_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3),"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3), "HM_m_d_freq"] <- HM.proportions.f6[HM.proportions.index.f6, "pf_other_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3),"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3), "HM_c_freq"] <- rowSums(HM.SM[HM.SM$round == "so1" & HM.SM$age.group %in% c(2, 3), c("HM_c_nd_freq", "HM_c_d_freq")]) 
 
-HM.proportions.6_12 <- HM.proportions %>% filter(age.vo.group == 5) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
-HM.proportions.index.6_12 <- sample(c(1:nrow(HM.proportions.6_12)), size = ndvar(), replace = TRUE)
-HM.child.6_12.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.6_12[HM.proportions.index.6_12, c(1,2)], na.rm = TRUE), type = "V", nsv = ndvar())
-HM.child.nd.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.6_12[HM.proportions.index.6_12, 1], type = "V", nsv = ndvar())
-HM.child.d.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.6_12[HM.proportions.index.6_12, 2], type = "V", nsv = ndvar())
-HM.mom.nd.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.6_12[HM.proportions.index.6_12, 3], type = "V", nsv = ndvar())
-HM.mom.d.events.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.6_12[HM.proportions.index.6_12, 4], type = "V", nsv = ndvar())
+HM.proportions.6_12 <- HM.proportions %>% filter(age.group == 4) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pf_other_hands_d) /100
+HM.proportions.index.6_12 <- sample(c(1:nrow(HM.proportions.6_12)), size = nrow(HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4,]), replace = TRUE)
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4, "HM_c_nd_freq"] <- HM.proportions.6_12[HM.proportions.index.6_12, "pf_child_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4, "HM_c_d_freq"] <- HM.proportions.6_12[HM.proportions.index.6_12, "pf_child_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4, "HM_m_nd_freq"] <- HM.proportions.6_12[HM.proportions.index.6_12, "pf_other_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4, "HM_m_d_freq"] <- HM.proportions.6_12[HM.proportions.index.6_12, "pf_other_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4, "HM_c_freq"] <- rowSums(HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 4, c("HM_c_nd_freq", "HM_c_d_freq")]) 
 
-HM.proportions.12_24 <- HM.proportions %>% filter(age.vo.group == 6) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
-HM.proportions.index.12_24 <- sample(c(1:nrow(HM.proportions.12_24)), size = ndvar(), replace = TRUE)
-HM.child.12_24.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.12_24[HM.proportions.index.12_24, c(1,2)], na.rm = TRUE), type = "V", nsv = ndvar())
-HM.child.nd.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.12_24[HM.proportions.index.12_24, 1], type = "V", nsv = ndvar())
-HM.child.d.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.12_24[HM.proportions.index.12_24, 2], type = "V", nsv = ndvar())
-HM.mom.nd.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.12_24[HM.proportions.index.12_24, 3], type = "V", nsv = ndvar())
-HM.mom.d.events.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.12_24[HM.proportions.index.12_24, 4], type = "V", nsv = ndvar())
+HM.proportions.12_24 <- HM.proportions %>% filter(age.group == 5) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pf_other_hands_d) /100
+HM.proportions.index.12_24 <- sample(c(1:nrow(HM.proportions.12_24)), size = nrow(HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5,]), replace = TRUE)
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, "HM_c_nd_freq"] <- HM.proportions.12_24[HM.proportions.index.12_24, "pf_child_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, "HM_c_d_freq"] <- HM.proportions.12_24[HM.proportions.index.12_24, "pf_child_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, "HM_m_nd_freq"] <- HM.proportions.12_24[HM.proportions.index.12_24, "pf_other_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, "HM_m_d_freq"] <- HM.proportions.12_24[HM.proportions.index.12_24, "pf_other_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, "HM_c_freq"] <- rowSums(HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, c("HM_c_nd_freq", "HM_c_d_freq")]) 
 
-HM.proportions.24_36 <- HM.proportions %>% filter(age.vo.group == 7) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
-HM.proportions.index.24_36 <- sample(c(1:nrow(HM.proportions.24_36)), size = ndvar(), replace = TRUE)
-HM.child.24_36.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.24_36[HM.proportions.index.24_36, c(1,2)], na.rm = TRUE), type = "V", nsv = ndvar())
-HM.child.nd.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.24_36[HM.proportions.index.24_36, 1], type = "V", nsv = ndvar())
-HM.child.d.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.24_36[HM.proportions.index.24_36, 2], type = "V", nsv = ndvar())
-HM.mom.nd.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.24_36[HM.proportions.index.24_36, 3], type = "V", nsv = ndvar())
-HM.mom.d.events.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.24_36[HM.proportions.index.24_36, 4], type = "V", nsv = ndvar())
+HM.proportions.24_36 <- HM.proportions %>% filter(age.group == 6) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pf_other_hands_d) /100
+HM.proportions.index.24_36 <- sample(c(1:nrow(HM.proportions.24_36)), size = nrow(HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,]), replace = TRUE)
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_c_nd_freq"] <- HM.proportions.24_36[HM.proportions.index.24_36, "pf_child_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_c_d_freq"] <- HM.proportions.24_36[HM.proportions.index.24_36, "pf_child_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_m_nd_freq"] <- HM.proportions.24_36[HM.proportions.index.24_36, "pf_other_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_m_d_freq"] <- HM.proportions.24_36[HM.proportions.index.24_36, "pf_other_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,"HM_freq"]
+HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_c_freq"] <- rowSums(HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, c("HM_c_nd_freq", "HM_c_d_freq")]) 
 
-HM.proportions.36_48 <- HM.proportions %>% filter(age.vo.group == 7) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
-HM.proportions.index.36_48 <- sample(c(1:nrow(HM.proportions.36_48)), size = ndvar(), replace = TRUE)
-HM.child.36_48.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.36_48[HM.proportions.index.36_48, c(1,2)], na.rm = TRUE), type = "V", nsv = ndvar())
-HM.child.nd.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.36_48[HM.proportions.index.36_48, 1], type = "V", nsv = ndvar())
-HM.child.d.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.36_48[HM.proportions.index.36_48, 2], type = "V", nsv = ndvar())
-HM.mom.nd.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.36_48[HM.proportions.index.36_48, 3], type = "V", nsv = ndvar())
-HM.mom.d.events.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.36_48[HM.proportions.index.36_48, 4], type = "V", nsv = ndvar())
+## Now made mcnodes from all the hand contact data that is summarized in HM.SM
+HM.child.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "HM_c_freq"], type = "V", nsv = ndvar())
+HM.child.nd.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "HM_c_nd_freq"], type = "V", nsv = ndvar())
+HM.child.d.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.mom.nd.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "HM_m_nd_freq"], type = "V", nsv = ndvar())
+HM.mom.d.events.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "m_feeding_freq"], type = "V", nsv = ndvar())
+
+HM.child.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "HM_c_freq"], type = "V", nsv = ndvar())
+HM.child.nd.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "HM_c_nd_freq"], type = "V", nsv = ndvar())
+HM.child.d.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.mom.nd.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "HM_m_nd_freq"], type = "V", nsv = ndvar())
+HM.mom.d.events.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "m_feeding_freq"], type = "V", nsv = ndvar())
+
+HM.child.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "HM_c_freq"], type = "V", nsv = ndvar())
+HM.child.nd.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "HM_c_nd_freq"], type = "V", nsv = ndvar())
+HM.child.d.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.mom.nd.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "HM_m_nd_freq"], type = "V", nsv = ndvar())
+HM.mom.d.events.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "m_feeding_freq"], type = "V", nsv = ndvar())
+
+HM.child.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "HM_c_freq"], type = "V", nsv = ndvar())
+HM.child.nd.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "HM_c_nd_freq"], type = "V", nsv = ndvar())
+HM.child.d.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.mom.nd.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "HM_m_nd_freq"], type = "V", nsv = ndvar())
+HM.mom.d.events.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "m_feeding_freq"], type = "V", nsv = ndvar())
+
+HM.child.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "HM_c_freq"], type = "V", nsv = ndvar())
+HM.child.nd.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "HM_c_nd_freq"], type = "V", nsv = ndvar())
+HM.child.d.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.mom.nd.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "HM_m_nd_freq"], type = "V", nsv = ndvar())
+HM.mom.d.events.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "m_feeding_freq"], type = "V", nsv = ndvar())
 
 ## Code to determine the best-fitting distribution --> Weibull is the best for all 
 bestFitDist <- function(data, title, xaxis){
