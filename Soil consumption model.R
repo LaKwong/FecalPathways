@@ -1,6 +1,9 @@
 ### Figure out which distribution to use
 # normal probably fits pretty well, but must be bounded at 0 because neither SA nor conc or load can be neg
 
+# What about HM and OM distributions that fit terribly (either nothing fits, non-weibull fits better but I feel that I should be consistent and use the same [weibull] for all)
+# ex. line 980 ### all of the distributions fit terribly, normal sort of fits the best
+# ex. HM.child.24_36 and HM.child 36_48
 
 # How do I know the ratio of variable to uncertainty and use mcratio?
 # 
@@ -489,6 +492,107 @@ qplot(C.hand.SA.WASHB.24_36, geom = "histogram", binwidth = 1)
 ## We determined the dist for WASHB mother's hand SA in line 300 above: M.hand.SA.WASHB.mcstoc
 
 
+############# Define some distributional tests ##################
+## Code to determine the best-fitting distribution --> Weibull is the best for all 
+bestFitDist <- function(data, title, xaxis){
+  Kwong  <- data #"hand_m_nd_tot_freq"]
+  max(Kwong)
+  breaks <- seq(0,120,by=5)
+  HMfreq <- table(cut(Kwong,breaks,right=FALSE))
+  cum_HMfreq0 <- c(0,cumsum(HMfreq)/sum(HMfreq))
+  plot(breaks, cum_HMfreq0, main = title, xlab = xaxis, ylab = "Percentile") #Percentile = cumulative density
+  plot(ecdf(Kwong),add=TRUE)
+  
+  #Kolmogorov-Smirnov, Cramer-von-Mises and Anderson Darling, Chi-square
+  lognorm  <-  fitdistr(na.omit(Kwong),densfun="log-normal")
+  curve(plnorm(x, meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]),from=0, to=120, add=TRUE,col="red")
+  ks.test(Kwong, rlnorm(ndvar(), meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]),alternative="two.sided") #D=0.11722, p=0.61203
+  cvm.test(Kwong, "plnorm",meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]) #omega2=0.043878,0.9168
+  ad.test(Kwong, "plnorm",meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]) #An=0.33139, p=9119
+  chisq.test(Kwong, rlnorm(ndvar(), meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]))
+  
+  weib  <-  fitdistr(na.omit(Kwong),densfun=dweibull,start=list(scale=20,shape=1))
+  curve(pweibull(x, scale=weib$estimate[1], shape=weib$estimate[2]),from=0, to=120, add=TRUE,col="green")
+  ks.test(Kwong,rweibull(ndvar(), scale=weib$estimate[1], shape=weib$estimate[2]),alternative="two.sided") #D=0.11722, p=0.61203
+  cvm.test(Kwong,"pweibull",scale=weib$estimate[1], shape=weib$estimate[2]) #omega2=0.043878,0.9168
+  ad.test(Kwong,"pweibull",scale=weib$estimate[1], shape=weib$estimate[2]) #An=0.33139, p=9119
+  chisq.test(Kwong,rweibull(ndvar(), scale=weib$estimate[1], shape=weib$estimate[2]))
+  
+  norm  <-  fitdistr(na.omit(Kwong),densfun="normal")
+  curve(pnorm(x, mean=norm$estimate[1], sd=norm$estimate[2]),from=0, to=120, add=TRUE,col="blue")
+  ks.test(Kwong,rnorm(ndvar(), mean=norm$estimate[1], sd=norm$estimate[2]),alternative="two.sided") #D=0.11722, p=0.61203
+  cvm.test(Kwong,"pnorm",mean=norm$estimate[1], sd=norm$estimate[2]) #omega2=0.043878,0.9168
+  ad.test(Kwong,"pnorm",mean=norm$estimate[1], sd=norm$estimate[2]) #An=0.33139, p=9119
+  chisq.test(Kwong,rnorm(ndvar(), mean=norm$estimate[1], sd=norm$estimate[2]))
+  
+  # beta  <-  fitdistr(na.omit(Kwong), densfun="beta", start = list(shape1 = 2, shape2 = 4))
+  # curve(pbeta(x, mean=beta$estimate[1], sd=beta$estimate[2]),from=0, to=95, add=TRUE,col="blue")
+  # ks.test(Kwong,rbeta(ndvar(), mean=beta$estimate[1], sd=beta$estimate[2]),alternative="two.sided") #D=0.11722, p=0.6953
+  # cvm.test(Kwong,"pbeta",mean=beta$estimate[1], sd=beta$estimate[2]) #omega2=0.043878,0.9168
+  # ad.test(Kwong,"pbeta",mean=beta$estimate[1], sd=beta$estimate[2]) #An=0.33139, p=9119
+  # chisq.test(Kwong,rbeta(ndvar(), mean=beta$estimate[1], sd=beta$estimate[2]))
+  # legend("topleft",legend=c("log-normal","Weibull","normal", "beta"), col=c("red","green","blue", "purple"),lty=c(1,1,1,1))
+  
+  legend("topleft",legend=c("log-normal","Weibull","normal"), col=c("red","green","blue"),lty=c(1,1,1))
+}
+
+find.lognorm.dist <- function(mcnode){
+  sample <- sample(mcnode, ndvar())
+  sample <- sample[!is.na(sample)]
+  mcnode.dist <- fitdist(sample, "lnorm", method = "mle")
+  print(mcnode.dist)
+  plot(mcnode.dist)
+}
+
+find.norm.dist <- function(mcnode){
+  sample <- sample(mcnode, ndvar())
+  mcnode.dist <- fitdist(sample, "norm", method = "mle") # lower = c(0, 0),
+  print(mcnode.dist)
+  plot(mcnode.dist, xlim = c(50, 150))
+}
+#find.norm.dist(C.hand.SA.WASHB.6_12.mcstoc)
+
+find.weib.dist <- function(mcnode){
+  sample <- sample(mcnode, ndvar())
+  sample <- sample[!is.na(sample)]
+  mcnode.dist <- fitdist(sample, "weibull", method = "mle")
+  print(mcnode.dist)
+  plot(mcnode.dist)
+}
+
+find.unif.dist <- function(mcnode){
+  sample <- sample(mcnode, ndvar())
+  sample <- sample[!is.na(sample)]
+  mcnode.dist <- fitdist(sample, "unif", method = "mle")
+  print(mcnode.dist)
+  plot(mcnode.dist)
+}
+
+# fitW <- fitdist(serving, "weibull")
+# fitg <- fitdist(serving, "gamma")
+# fitln <- fitdist(serving, "lnorm")
+# summary(fitW)
+# summary(fitg)
+# cdfcomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
+# denscomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
+# qqcomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
+# ppcomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
+# gofstat(list(fitW, fitg, fitln), fitnames=c("Weibull", "gamma", "lognormal"))
+
+find.lognorm.dist(amt.soil.ingested.mg.day.u6)
+find.lognorm.dist(amt.soil.ingested.mg.day.6_12)
+find.lognorm.dist(amt.soil.ingested.mg.day.12_24)
+find.lognorm.dist(amt.soil.ingested.mg.day.24_36)
+
+# These should likely al lbe normal not weibull but I get error 100 when trying to use the normal dist, perhaps bcause the sd is neg?
+# Lognormal actually fits really well, so I will use that 
+
+hist(C.hand.SA.WASHB.f6.mcstoc)
+find.lognorm.dist(C.hand.SA.WASHB.f6.mcstoc)
+find.lognorm.dist(C.hand.SA.WASHB.6_12.mcstoc)
+find.lognorm.dist(C.hand.SA.WASHB.12_24.mcstoc)
+find.lognorm.dist(C.hand.SA.WASHB.24_36.mcstoc)
+
 ######################## Add Hand-to-mouth contact data ################################
 # Load HM frequencies and soil ingestion frequencies for each individual, not hh
 ## Structured Observation 
@@ -513,18 +617,6 @@ names(SO.HM.SM) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "
 # ############ SO Data if I want to use the age group ################3
 # ## From SO of 149 kids
 # SO.HM.base <- read.csv("C:/Users/Tareq/Dropbox/Fecal pathways/Structured obs/Analysis/SO_160310_submitted to IJERPH 160313/shape_scale_mean_med_SAVE.csv")
-# # SO scale and shape for f6
-# HM.SO.f6.scale <- SO.HM.base[SO.HM.base$X == "h.f6", "scale.all"]
-# HM.SO.f6.shape <- SO.HM.base[SO.HM.base$X == "h.f6", "shape.all"]
-# 
-# # SO scale and shape for u6_12
-# HM.SO.u6_12.scale <- SO.HM.base[SO.HM.base$X == "h.u6_12", "scale.all"]
-# HM.SO.u6_12.shape <- SO.HM.base[SO.HM.base$X == "h.u6_12", "shape.all"]
-# 
-# # SO scale and shape for u24
-# HM.SO.u24.scale <- SO.HM.base[SO.HM.base$X == "h.u24", "scale.all"]
-# HM.SO.u24.shape <- SO.HM.base[SO.HM.base$X == "h.u24", "shape.all"]
-
 
 # Load HM frequencies and soil ingestion frequencies for each individual, not hh
 ## Video Observations 
@@ -532,7 +624,7 @@ hands_summary <- read.csv("C:/Users/Tareq/Box Sync/VO R123/hands_summary.csv")
 hands_summary <- hands_summary %>%
   mutate(hh = as.factor(hh), round = vo.num, age = age.vo, age.group = age.vo.group) %>%
   replace(is.na(.), 0)
-  
+
 VO.HM.SM.handscontacts <- hands_summary %>%
   mutate(m_feeding_freq = 0, soil_m_tot_freq = 0, soil_h_m_tot_freq = 0) %>% # soil contacts are not recorded in hands_summary so soil_m_tot_freq and soil_h_m_tot_freq are NA
   select(hh, round, age, age.group, count_allhands, freq_allhands, freq_child_hands, freq_child_hands_nd, freq_child_hands_d, freq_other_hands_nd, freq_other_hands_d, soil_m_tot_freq, soil_h_m_tot_freq)
@@ -655,6 +747,22 @@ HM.child.d.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %i
 HM.mom.nd.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "HM_m_nd_freq"], type = "V", nsv = ndvar())
 HM.mom.d.events.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "m_feeding_freq"], type = "V", nsv = ndvar())
 
+# Does HM.child follow a weibull dist? 
+# for age.grouup = 4, the weibull fits all right, but for the others, there are too few datapoint for a good fit
+# --> for now use the empirical distributions, use the weibull if I get more data later
+descdist(unmc(HM.child.f6.mcstoc), discrete = FALSE)
+bestFitDist(data = unmc(HM.child.f6.mcstoc)+ 10e-4, "Hand-to-mouth freq/hr", "Hand-to-mouth freq/hr")
+descdist(unmc(HM.child.6_12.mcstoc), discrete = FALSE)
+bestFitDist(data = unmc(HM.child.6_12.mcstoc)+ 10e-4, "Hand-to-mouth freq/hr", "Hand-to-mouth freq/hr")
+descdist(unmc(HM.child.12_24.mcstoc), discrete = FALSE)
+bestFitDist(data = unmc(HM.child.12_24.mcstoc)+ 10e-4, "Hand-to-mouth freq/hr", "Hand-to-mouth freq/hr")
+descdist(unmc(HM.child.24_36.mcstoc), discrete = FALSE)
+bestFitDist(data = unmc(HM.child.24_36.mcstoc)+ 10e-4, "Hand-to-mouth freq/hr", "Hand-to-mouth freq/hr")
+# The distributional fit for HM.child.24_36 is pretty poor 
+descdist(unmc(HM.child.36_48.mcstoc), discrete = FALSE)
+bestFitDist(data = unmc(HM.child.36_48.mcstoc)+ 10e-4, "Hand-to-mouth freq/hr", "Hand-to-mouth freq/hr")
+# The distributional fit for HM.child.36_48 is pretty poor 
+
 ########### Create DISTRIBUTIONS to represent mouthing frequency PER HOUR - will later conver to per day ############## 
 ### Use this distributions to REPLACE the mcnodes made above using mcstoc(empirical D) IF THE DISTRIBUTOIN EXISTS (will simply error and not overwrite if the distribution does not exist)
 ## For all HM_child
@@ -714,151 +822,6 @@ HM.mom.d.events.36_48.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(7), "m_feedin
 HM.mom.d.events.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = HM.mom.d.events.36_48.dist$estimate[[1]], scale = HM.mom.d.events.36_48.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
 
-## Code to determine the best-fitting distribution --> Weibull is the best for all 
-bestFitDist <- function(data, title, xaxis){
-  Kwong  <- data #"hand_m_nd_tot_freq"]
-  max(Kwong)
-  breaks <- seq(0,95,by=5)
-  HMfreq <- table(cut(Kwong,breaks,right=FALSE))
-  cum_HMfreq0 <- c(0,cumsum(HMfreq)/sum(HMfreq))
-  plot(breaks, cum_HMfreq0, main = title, xlab = xaxis, ylab = "Percentile") #Percentile = cumulative density
-  plot(ecdf(Kwong),add=TRUE)
-  
-  #Kolmogorov-Smirnov, Cramer-von-Mises and Anderson Darling, Chi-square
-  lognorm  <-  fitdistr(na.omit(Kwong),densfun="log-normal")
-  curve(plnorm(x, meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]),from=0, to=95, add=TRUE,col="red")
-  ks.test(Kwong, rlnorm(ndvar(), meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]),alternative="two.sided") #D=0.11722, p=0.6953
-  cvm.test(Kwong, "plnorm",meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]) #omega2=0.043878,0.9168
-  ad.test(Kwong, "plnorm",meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]) #An=0.33139, p=9119
-  chisq.test(Kwong, rlnorm(ndvar(), meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]))
-  
-  weib  <-  fitdistr(na.omit(Kwong),densfun=dweibull,start=list(scale=20,shape=1))
-  curve(pweibull(x, scale=weib$estimate[1], shape=weib$estimate[2]),from=0, to=95, add=TRUE,col="green")
-  ks.test(Kwong,rweibull(ndvar(), scale=weib$estimate[1], shape=weib$estimate[2]),alternative="two.sided") #D=0.11722, p=0.6953
-  cvm.test(Kwong,"pweibull",scale=weib$estimate[1], shape=weib$estimate[2]) #omega2=0.043878,0.9168
-  ad.test(Kwong,"pweibull",scale=weib$estimate[1], shape=weib$estimate[2]) #An=0.33139, p=9119
-  chisq.test(Kwong,rweibull(ndvar(), scale=weib$estimate[1], shape=weib$estimate[2]))
-  
-  norm  <-  fitdistr(na.omit(Kwong),densfun="normal")
-  curve(pnorm(x, mean=norm$estimate[1], sd=norm$estimate[2]),from=0, to=95, add=TRUE,col="blue")
-  ks.test(Kwong,rnorm(ndvar(), mean=norm$estimate[1], sd=norm$estimate[2]),alternative="two.sided") #D=0.11722, p=0.6953
-  cvm.test(Kwong,"pnorm",mean=norm$estimate[1], sd=norm$estimate[2]) #omega2=0.043878,0.9168
-  ad.test(Kwong,"pnorm",mean=norm$estimate[1], sd=norm$estimate[2]) #An=0.33139, p=9119
-  chisq.test(Kwong,rnorm(ndvar(), mean=norm$estimate[1], sd=norm$estimate[2]))
-  
-  # beta  <-  fitdistr(na.omit(Kwong), densfun="beta", start = list(shape1 = 2, shape2 = 4))
-  # curve(pbeta(x, mean=beta$estimate[1], sd=beta$estimate[2]),from=0, to=95, add=TRUE,col="blue")
-  # ks.test(Kwong,rbeta(ndvar(), mean=beta$estimate[1], sd=beta$estimate[2]),alternative="two.sided") #D=0.11722, p=0.6953
-  # cvm.test(Kwong,"pbeta",mean=beta$estimate[1], sd=beta$estimate[2]) #omega2=0.043878,0.9168
-  # ad.test(Kwong,"pbeta",mean=beta$estimate[1], sd=beta$estimate[2]) #An=0.33139, p=9119
-  # chisq.test(Kwong,rbeta(ndvar(), mean=beta$estimate[1], sd=beta$estimate[2]))
-  # legend("topleft",legend=c("log-normal","Weibull","normal", "beta"), col=c("red","green","blue", "purple"),lty=c(1,1,1,1))
-  
-  legend("topleft",legend=c("log-normal","Weibull","normal"), col=c("red","green","blue"),lty=c(1,1,1))
-}
-
-
-find.lognorm.dist <- function(mcnode){
-  sample <- sample(mcnode, ndvar())
-  sample <- sample[!is.na(sample)]
-  mcnode.dist <- fitdist(sample, "lnorm", method = "mle")
-  print(mcnode.dist)
-  plot(mcnode.dist)
-}
-
-find.norm.dist <- function(mcnode){
-  sample <- sample(mcnode, ndvar())
-  mcnode.dist <- fitdist(sample, "norm", method = "mle") # lower = c(0, 0),
-  print(mcnode.dist)
-  plot(mcnode.dist, xlim = c(50, 150))
-}
-#find.norm.dist(C.hand.SA.WASHB.6_12.mcstoc)
-
-find.weib.dist <- function(mcnode){
-  sample <- sample(mcnode, ndvar())
-  sample <- sample[!is.na(sample)]
-  mcnode.dist <- fitdist(sample, "weibull", method = "mle")
-  print(mcnode.dist)
-  plot(mcnode.dist)
-}
-
-
-find.unif.dist <- function(mcnode){
-  sample <- sample(mcnode, ndvar())
-  sample <- sample[!is.na(sample)]
-  mcnode.dist <- fitdist(sample, "unif", method = "mle")
-  print(mcnode.dist)
-  plot(mcnode.dist)
-}
-
-# fitW <- fitdist(serving, "weibull")
-# fitg <- fitdist(serving, "gamma")
-# fitln <- fitdist(serving, "lnorm")
-# summary(fitW)
-# summary(fitg)
-# cdfcomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
-# denscomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
-# qqcomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
-# ppcomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
-# gofstat(list(fitW, fitg, fitln), fitnames=c("Weibull", "gamma", "lognormal"))
-
-find.lognorm.dist(amt.soil.ingested.mg.day.u6)
-find.lognorm.dist(amt.soil.ingested.mg.day.6_12)
-find.lognorm.dist(amt.soil.ingested.mg.day.12_24)
-find.lognorm.dist(amt.soil.ingested.mg.day.24_36)
-
-# These should likely al lbe normal not weibull but I get error 100 when trying to use the normal dist, perhaps bcause the sd is neg?
-# Lognormal actually fits really well, so I will use that 
-
-hist(C.hand.SA.WASHB.f6.mcstoc)
-find.lognorm.dist(C.hand.SA.WASHB.f6.mcstoc)
-find.lognorm.dist(C.hand.SA.WASHB.6_12.mcstoc)
-find.lognorm.dist(C.hand.SA.WASHB.12_24.mcstoc)
-find.lognorm.dist(C.hand.SA.WASHB.24_36.mcstoc)
-
-#find.norm.dist(M.hand.SA.WASHB.mcstoc)
-find.lognorm.dist(M.hand.SA.WASHB.mcstoc)
-
-find.weib.dist(HF.ofmom.f6)
-find.weib.dist(HF.ofmom.6_12)
-find.weib.dist(HF.ofmom.12_24)
-find.weib.dist(HF.ofmom.24_36)
-
-hist(HM.child.12_24.mcstoc)
-hist(HM.other.nd.f6.mcstoc)
-hist(HM.other.d.f6.mcstoc)
-
-summary(HM.child.f6.mcstoc)
-summary(HM.child.6_12.mcstoc)
-summary(HM.child.12_24.mcstoc)
-summary(HM.child.24_36.mcstoc)
-
-summary(HM.other.nd.f6.mcstoc)
-summary(HM.other.nd.6_12.mcstoc)
-summary(HM.other.nd.12_24.mcstoc)
-summary(HM.other.nd.24_36.mcstoc)
-
-summary(HM.other.d.f6.mcstoc)
-summary(HM.other.d.6_12.mcstoc)
-summary(HM.other.d.12_24.mcstoc)
-summary(HM.other.d.24_36.mcstoc)
-
-summary(soil.C.conc)
-
-summary(soil.M.load)
-
-
-# Does HM.child follow a weibull dist? 
-# for age.grouup = 4, the weibull fits all right, but for the others, there are too few datapoint for a good fit
-# --> for now use the empirical distributions, use the weibull if I get more data later
-descdist(unmc(HM.child.f6.mcstoc), discrete = FALSE)
-bestFitDist(data = unmc(HM.child.f6.mcstoc)+ 10e-4, "Hand to mouth", "Hand to Mouth")
-descdist(unmc(HM.child.6_12.mcstoc), discrete = FALSE)
-bestFitDist(data = unmc(HM.child.6_12.mcstoc)+ 10e-4, "Hand to mouth", "Hand to Mouth")
-descdist(unmc(HM.child.12_24.mcstoc), discrete = FALSE)
-bestFitDist(data = unmc(HM.child.12_24.mcstoc)+ 10e-4, "Hand to mouth", "Hand to Mouth")
-
-
 
 #################### Combine load_child/load_mom with HM_child/HM_mom with mouth SA dist, removal efficiency dist
 
@@ -915,8 +878,12 @@ HF.ofmom.24_36 <- C.hand.SA.WASHB.inMouth.24_36.mcstoc / median(M.hand.SA.WASHB.
 
 
 ####################### SEE Saliva extraction efficiency  = HMRE	Hand mouthing removal = transfer efficiency #######################
-# HMRE per	day	beta	2	8				 Ozkaynak 2011
-SEE.mcstoc <- mcstoc(rbeta, type="V", shape1 = 2, shape2 = 8, rtrunc=TRUE, linf=0)
+
+# For the many reasons listed in my soil paper, I will NOT use ths Ozkaynak 2011 HMRE per	day	beta	2	8			
+# we estimated a triangular distribution with a lower bound of 24%, mode of 75%, and upper bound of 100% with the beta distribution using maximum likelihood estimation. The resulting distribution, beta(5.1, 2.6), has a 5th percentile of 38.1%, median of 68.2%, and a 95th percentile of 90.1%. 
+fitdist(rtriangle(100000, 0.24, 0.75, (0.24+0.75)/2), "beta", method = "mle") # For a triangular dist, the values must be 0-1
+hist(rbeta(10000, shape1 = 11.02, shape2 = 11.24))
+SEE.mcstoc <- mcstoc(rbeta, type="V", shape1 = 11.02, shape2 = 11.24, rtrunc=TRUE, linf=0)
 
 
 
@@ -1017,6 +984,7 @@ hist(OM[OM$age > 12 & OM$age <= 24, "OM"])
 ### Which distribution is suitable? Weibull, based on Xue meta-analysis, also the best fit for our dist based on code in 1120
 # Doest seem to fit pretty well for the data here
 bestFitDist(data = sample((OM[OM$age < 6, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
+### all of the distributions fit terribly, normal sort of fits the best
 OM.f6.dist <- fitdist(OM[OM$age < 6, "OM"], "weibull", method = "mle")
 OM.f6.mcstoc <- mcstoc(rweibull, type="V", shape = OM.f6.dist$estimate[[1]], scale = OM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
@@ -1054,16 +1022,17 @@ hist(obj.SA.mouthed.mcstoc)
 
 ####### Object-to-mouth transfer efficiency ##########
 
-# Oz again used beta(2, 8) which I think is too low, but it should be similar to SEE and right now HRME is beta(2,8) so I will use beta(2,8) for comparative purposes
+# Oz again used beta(2, 8) which I think is too low, but it should be similar to SEE 
+#Use the saliva extraction efficency (SEE)
+OMRE.mcstoc <- SEE.mcstoc
 
-OMRE.mcstoc <- mcstoc(rbeta, type = "V", shape1 = 2, shape2 = 8, rtrunc=TRUE, linf=0)
 
 
 
 #####################################################################################
 #####################################################################################
 
-################## Soil ingestion directly placing soil in the mouth #################
+################## Soil ingestion directly placing soil in the mouth per day #################
 
 #####################################################################################
 ######################################################################################
@@ -1207,6 +1176,7 @@ SM.consumerfrac.p1.f6 <- (8.3)/100
 SM.consumerfrac.p1.6_12 <- (52.5)/100
 SM.consumerfrac.p1.12_24 <- (50.0)/100
 SM.consumerfrac.p1.24_36 <- (27.4)/100
+SM.consumerfrac.p1.36_48 <- (27.4)/100 ## I don't have a value for children this age, so use the 24_36 soil ingetstion consumer fractions
 
 # # percent consumers/day divided by the number of hours awake per day --> to get this into a fraction between 0 and 1, must divide by 100
 # SM.consumerfrac.p1.f6 <- (8.3/(24 - rnorm(ndvar(), 13.6, 2.1)))/100 
@@ -1216,31 +1186,99 @@ SM.consumerfrac.p1.24_36 <- (27.4)/100
 
 ######################### Number of direct soil-to-mouth contacts ####################
 # Soil ingestion rate for each child within each age group (not summarized by age group)
-SM.f6 <- HM.SM[HM.SM$age < 6 & !(is.na(HM.SM$SM)), "SM"]
-SM.freq.1.f6 <- mcstoc(rempiricalD, values = SM.f6, type="V", nsv = ndvar())
-SM.6_12 <- HM.SM[HM.SM$age > 6 & HM.SM$age <= 12 & !(is.na(HM.SM$SM)), "SM"]
-SM.freq.1.6_12 <- mcstoc(rempiricalD, values = SM.6_12, type="V", nsv = ndvar())
-SM.12_24 <- HM.SM[HM.SM$age > 12 & HM.SM$age <= 24 & !(is.na(HM.SM$SM)), "SM"]
-SM.freq.1.12_24 <- mcstoc(rempiricalD, values = SM.12_24, type="V", nsv = ndvar())
-SM.24_36 <- HM.SM[HM.SM$age > 24 & HM.SM$age <= 36 & !(is.na(HM.SM$SM)), "SM"]
-# SM.freq.24_36.mcstoc <- mcstoc(rempiricalD, values = SM.24_36, type="V", nsv = ndvar())
-
-SM.freq.1.24_36 <- SM.freq.1.12_24  # mcstoc(rlnorm, 0.1, 0.2, type = "V", nsv = ndvar()) # Use for now
+## OF THOSE WHO CONSUMED SOIL - NOT CONSUMERS WILL BE REMOVD IN THE MCPROBTREE
+## recall HM.SM$SM_freq is per HOUR - we need per DAY
+SM.f6 <- HM.SM[HM.SM$age.group %in% c(2,3) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
+SM.f6.mcstoc <- mcstoc(rempiricalD, values = SM.f6, type="V", nsv = ndvar())
+SM.6_12 <- HM.SM[HM.SM$age.group %in% c(4) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
+SM.6_12.mcstoc <- mcstoc(rempiricalD, values = SM.6_12, type="V", nsv = ndvar())
+SM.12_24 <- HM.SM[HM.SM$age.group %in% c(5) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
+SM.12_24.mcstoc <- mcstoc(rempiricalD, values = SM.12_24, type="V", nsv = ndvar())
+SM.24_36 <- HM.SM[HM.SM$age.group %in% c(6) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
+SM.24_36.mcstoc <- mcstoc(rempiricalD, values = SM.12_24, type="V", nsv = ndvar())
+SM.36_48 <- HM.SM[HM.SM$age.group %in% c(7) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
+SM.36_48.mcstoc <- mcstoc(rempiricalD, values = SM.12_24, type="V", nsv = ndvar())
 
 # In 2/24 (8.3%) observations of children <6 months old, children directly consumed soil with an average of 0.56 times/hr (sd = 0.14 events/hr). 
 # Among 123 observations of children 6-12 months old, there were 33 (26.8%) observations of children putting soil into their mouths  (mean = 1.16 events/hr, sd = 1.31 events/hr) 
 # and among 54 observations children 12-24 months old, there were 14 (25.9%) observations of soil consumption (mean = 0.90 events/hr, sd = 0.50 events/hr).
 # None of the five children 24-36 months old directly consumed soil during the observation period. 
 
+
+##########################################################################
+
+######## Convert times per hour to times per day by selecting DIFF hour freq for each hour awake during the day then summing ###
+
+####################### Duration awake each day #########################
+# From Gallan, 2011
+# By age group
+# Don't use specific months of age because there isn't enough data for some of the months
+## Seems a bit anamolous that hours slept is lower for 9-month-old children than 6 and 12 month old children so I'll use the 6- and 12-month-old values
+awake.hr.f6 <- 24 - mcstoc(rnorm, type = "V", mean = 13.6, sd = 2.1, rtrunc=TRUE, linf=0) # use for f6
+awake.hr.6_12 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 1.3, rtrunc=TRUE, linf=0) # use for 6_12
+awake.hr.12_24 <- 24 - mcstoc(rnorm, type = "V", mean = 12.6, sd = 1.3, rtrunc=TRUE, linf=0) # use for 12-24
+awake.hr.24_36 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 24-36
+awake.hr.36_48 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 36-48
+
+
+# types of mouthing (these are all in /hr and need to be converted to /day)
+mouthing.types <- c(
+  "HM.child.nd", # non-dietary         ## in the output mouthingTable, child != child.nd + child.d because they are calc from diff sample draws
+  "HM.child.d", # dietary
+  "HM.mom.nd", # caregiver non-dietary
+  "HM.mom.d.events", # caregiver dietary
+  "OM",
+  "SM",
+  "HM.child" # non-dietary + dietary
+)
+
+age.group.names <- c("f6", "6_12", "12_24", "24_36", "36_48")
+for(i in 1:length(age.group.names)){
+  age.group.name <- age.group.names[i]
+  assign(paste("mouthing.", age.group.name, sep = ""), matrix(NA, ncol = length(mouthing.types), nrow = ndvar, dimnames = list(NULL, mouthing.types)))
+}
+
+## create a table for each age group f6, 6_12, 12_24, 24_36, 36_48 to store the daily
+# The table is ndvar() long with the col each of the mouthing types 
+allMouthingTable <- function(mouthing.type, age.group, i, j, mouthingTable){
+  Aw.age.group <- paste("Aw.", age.group, sep = "")
+  assign(Aw.age.group, sample(get(paste("awake.hr.", age.group, sep="")), 1))
+  assign(paste(mouthing.type, ".", Aw.age.group, ".base", sep = ""), sample(get(paste(mouthing.type, ".", age.group, ".mcstoc", sep = "")), floor(get(Aw.age.group))))
+  assign(paste(mouthing.type, ".", Aw.age.group, ".extra", sep = ""), sample(get(paste(mouthing.type, ".", age.group, ".mcstoc", sep = "")), 1) * get(Aw.age.group) %% 1)
+  assign(paste(mouthing.type, ".", age.group, sep = ""), sum(get(paste(mouthing.type, ".", Aw.age.group, ".base", sep = "")), na.rm = TRUE) + get(paste(mouthing.type, ".", Aw.age.group, ".extra", sep = "")))
+  mouthingTable[i, j] <- round(get(paste(mouthing.type, ".", age.group, sep = "")), digits = 1)
+  mouthingTable[, "HM.child"] <- rowSums(mouthingTable[, c("HM.child.nd", "HM.child.d")])
+  return(mouthingTable) ## yaya! Just like in Java. Otherwise I need to set mouthing.f6 to save in the global environment (I've passed a copy, not by reference into the funciton; don't know how to pass by ref in R)
+}
+
+for(k in 1:length(age.group.names)){
+  age.group <- age.group.names[k]
+  for(j in 1:length(mouthing.types)){
+    mouthing.type <- mouthing.types[j]
+    for(i in 1:ndvar){
+      mouthingTable <- get(paste("mouthing.", age.group, sep = ""))
+      assign(paste("mouthing.", age.group, sep = ""), allMouthingTable(mouthing.type, age.group, i, j, mouthingTable))
+    }
+  }
+}
+
+
+################ Back to soil consumption ##############
+### For a child that is a consumer, multiply by the DAILY rate of consumption (in mouthingTable)
 ## Children are either consumers or not -> use a distribution of 0s and 1s, where 1s represent consumers
 #Use mcprobtree instead of this: SM.consumerfrac.f6 <-    mcstoc(rempiricalD, values = c(rep(0, 10000), rep(1, 6)), type="V", nsv = ndvar()) # This is observed, not survey report, as the other values are. 
 
 SM.freq.0 <- mcdata(0, type = "V")
-
-SM.fracfreq.f6 <- mcprobtree(c(1 - SM.consumerfrac.p1.f6, SM.consumerfrac.p1.f6), list("0" = SM.freq.0, "1" = SM.freq.1.f6), type = "V")
-SM.fracfreq.6_12 <- mcprobtree(c(1 - SM.consumerfrac.p1.6_12, SM.consumerfrac.p1.6_12), list("0" = SM.freq.0, "1" = SM.freq.1.6_12), type = "V")
-SM.fracfreq.12_24 <- mcprobtree(c(1 - SM.consumerfrac.p1.12_24, SM.consumerfrac.p1.12_24), list("0" = SM.freq.0, "1" = SM.freq.1.12_24), type = "V")
-SM.fracfreq.24_36 <- mcprobtree(c(1 - SM.consumerfrac.p1.24_36, SM.consumerfrac.p1.24_36), list("0" = SM.freq.0, "1" = SM.freq.1.24_36), type = "V")
+SM.f6.day.mcnode <- mcstoc(rempiricalD, values = mouthing.f6[,"SM"], type = "V", nsv = ndvar())
+SM.fracfreq.f6 <- mcprobtree(c(1 - SM.consumerfrac.p1.f6, SM.consumerfrac.p1.f6), list("0" = SM.freq.0, "1" = SM.f6.day.mcnode), type = "V")
+SM.6_12.day.mcnode <- mcstoc(rempiricalD, values = mouthing.6_12[,"SM"], type = "V", nsv = ndvar())
+SM.fracfreq.6_12 <- mcprobtree(c(1 - SM.consumerfrac.p1.6_12, SM.consumerfrac.p1.6_12), list("0" = SM.freq.0, "1" = SM.6_12.day.mcnode), type = "V")
+SM.12_24.day.mcnode <- mcstoc(rempiricalD, values = mouthing.12_24[,"SM"], type = "V", nsv = ndvar())
+SM.fracfreq.12_24 <- mcprobtree(c(1 - SM.consumerfrac.p1.12_24, SM.consumerfrac.p1.12_24), list("0" = SM.freq.0, "1" = SM.12_24.day.mcnode), type = "V")
+SM.24_36.day.mcnode <- mcstoc(rempiricalD, values = mouthing.24_36[,"SM"], type = "V", nsv = ndvar())
+SM.fracfreq.24_36 <- mcprobtree(c(1 - SM.consumerfrac.p1.24_36, SM.consumerfrac.p1.24_36), list("0" = SM.freq.0, "1" = SM.24_36.day.mcnode), type = "V")
+SM.36_48.day.mcnode <- mcstoc(rempiricalD, values = mouthing.36_48[,"SM"], type = "V", nsv = ndvar())
+SM.fracfreq.36_48 <- mcprobtree(c(1 - SM.consumerfrac.p1.36_48, SM.consumerfrac.p1.36_48), list("0" = SM.freq.0, "1" = SM.36_48.day.mcnode), type = "V")
 
 
 ### Based on rough estimates 
@@ -1261,65 +1299,12 @@ SM.fracfreq.24_36 <- mcprobtree(c(1 - SM.consumerfrac.p1.24_36, SM.consumerfrac.
 # As no direct soil consumption was observed among children 24-36 months old, 
 # their estimated soil ingestion rate would not increase from the inclusion of direct soil ingest in the model. 
 
-soil.direct.f6 <-  SM.fracfreq.f6 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 1.24 mg
-soil.direct.6_12 <-  SM.fracfreq.6_12 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 19.5 mg
-soil.direct.12_24 <- SM.fracfreq.12_24 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 13.7 mg
-soil.direct.24_36 <-  SM.fracfreq.24_36 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 6.56 mg
+soil.direct.f6 <-  SM.fracfreq.f6 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 12 mg
+soil.direct.6_12 <-  SM.fracfreq.6_12 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 210 mg
+soil.direct.12_24 <- SM.fracfreq.12_24 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 170 mg
+soil.direct.24_36 <-  SM.fracfreq.24_36 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 95 mg
+soil.direct.36_48 <-  SM.fracfreq.36_48 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 95.3 mg
 
-##########################################################################
-
-######## Convert times per hour to times per day by selecting DIFF hour freq for each hour awake during the day then summing ###
-
-####################### Duration awake each day #########################
-# From Gallan, 2011
-# By age group
-# Don't use specific months of age because there isn't enough data for some of the months
-## Seems a bit anamolous that hours slept is lower for 9-month-old children than 6 and 12 month old children so I'll use the 6- and 12-month-old values
-awake.hr.f6 <- 24 - mcstoc(rnorm, type = "V", mean = 13.6, sd = 2.1, rtrunc=TRUE, linf=0) # use for f6
-awake.hr.6_12 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 1.3, rtrunc=TRUE, linf=0) # use for 6_12
-awake.hr.12_24 <- 24 - mcstoc(rnorm, type = "V", mean = 12.6, sd = 1.3, rtrunc=TRUE, linf=0) # use for 12-24
-awake.hr.24_36 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 24-36
-awake.hr.36_48 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 36-48
-
-
-# types of mouthing (these are all in /hr and need to be converted to /day)
-mouthing.types <- c(
-  "HM.child", # non-dietary + dietary
-  "HM.child.nd", # non-dietary         ## in the output mouthingTable, child != child.nd + child.d because they are calc from diff sample draws
-  "HM.child.d", # dietary
-  "HM.mom.nd", # caregiver non-dietary
-  "HM.mom.d.events", # caregiver dietary
-  "OM"
-  )
-
-age.group.names <- c("f6", "6_12", "12_24", "24_36", "36_48")
-for(i in 1:length(age.group.names)){
-  age.group.name <- age.group.names[i]
-  assign(paste("mouthing.", age.group.name, sep = ""), matrix(NA, ncol = length(mouthing.types), nrow = ndvar, dimnames = list(NULL, mouthing.types)))
-}
-
-## create a table for each age group f6, 6_12, 12_24, 24_36, 36_48 to store the daily
-# The table is ndvar() long with the col each of the mouthing types 
-allMouthingTable <- function(mouthing.type, age.group, i, j, mouthingTable){
-  Aw.age.group <- paste("Aw.", age.group, sep = "")
-  assign(Aw.age.group, sample(get(paste("awake.hr.", age.group, sep="")), 1))
-  assign(paste(mouthing.type, ".", Aw.age.group, ".base", sep = ""), sample(get(paste(mouthing.type, ".", age.group, ".mcstoc", sep = "")), floor(get(Aw.age.group))))
-  assign(paste(mouthing.type, ".", Aw.age.group, ".extra", sep = ""), sample(get(paste(mouthing.type, ".", age.group, ".mcstoc", sep = "")), 1) * get(Aw.age.group) %% 1)
-  assign(paste(mouthing.type, ".", age.group, sep = ""), sum(get(paste(mouthing.type, ".", Aw.age.group, ".base", sep = "")), na.rm = TRUE) + get(paste(mouthing.type, ".", Aw.age.group, ".extra", sep = "")))
-  mouthingTable[i, j] <- get(paste(mouthing.type, ".", age.group, sep = ""))
-  return(mouthingTable) ## yaya! Just like in Java. Otherwise I need to set mouthing.f6 to save in the global environment (I've passed a copy, not by reference into the funciton; don't know how to pass by ref in R)
-}
-
-for(k in 1:length(age.group.names)){
-  age.group <- age.group.names[k]
-  for(j in 1:length(mouthing.types)){
-    mouthing.type <- mouthing.types[j]
-    for(i in 1:ndvar){
-      mouthingTable <- get(paste("mouthing.", age.group, sep = ""))
-      assign(paste("mouthing.", age.group, sep = ""), allMouthingTable(mouthing.type, age.group, i, j, mouthingTable))
-    }
-  }
-}
 
 
 
@@ -1373,12 +1358,13 @@ soil.directly.ingested.mg <- SM.ingested.amt.mcstoc
 
 soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingestion among children <6 months"
   
+  mouthingTable <- data.frame(get(paste("mouthing.", age.group,sep = "")))
   child.hand.surface.area.cm2 <- get(paste("C.hand.SA.WASHB.", age.group, ".mcstoc", sep = ""))
-  child.hand.mouth.frequency.events.day <- get(paste("HM.child.", age.group, ".mcstoc", sep = ""))
-  mom.hand.mouth.nonfood.frequency.events.day <- get(paste("HM.other.nd.", age.group, ".mcstoc", sep = ""))
-  mom.feeding.frequency.events.day <- get(paste("HM.other.d.", age.group, ".mcstoc", sep = ""))
+  child.hand.mouth.frequency.events.day <- mcdata(mouthingTable[,"HM.child"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  mom.hand.mouth.nonfood.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.nd"], type = "V", nsv = ndvar())
+  mom.feeding.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.d.events"], type = "V", nsv = ndvar())
   mom.hand.fraction.mouthed <- get(paste("HF.ofmom.", age.group, sep = ""))
-  child.obj.mouth.frequency.events.day  <- get(paste("OM.", age.group, ".mcstoc", sep = ""))
+  child.obj.mouth.frequency.events.day  <- mcdata(mouthingTable[,"OM"], type = "V", nsv = ndvar())
   child.frequency.ingested.soil.events.day <- get(paste("SM.fracfreq.", age.group, sep = "")) # Includes the fraction of children ingesting and the frequency of those ingesting
   #hours.awake <- get(paste("awake.day.", age.group, sep = ""))
   
@@ -1393,8 +1379,8 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
     mc(child.hand.soil.concentration.mg.cm2, child.hand.surface.area.cm2, child.hand.mouth.frequency.events.day, child.hand.fraction.mouthed,
        mom.hand.soil.load.mg, mom.hand.surface.area.cm2, mom.hand.mouth.nonfood.frequency.events.day, mom.feeding.frequency.events.day, mom.hand.fraction.mouthed,
        obj.soil.concentration, child.obj.mouth.frequency.events.day, obj.SA.mouthed, saliva.removal.efficiency,
-       soil.directly.ingested.mg, child.frequency.ingested.soil.events.day,
-       hours.awake, child.hand.soil.day, mom.hand.soil.day, child.obj.soil.day, child.direct.soil.day, amt.soil.ingested.mg.day) #sleep.day.24_36,
+       soil.directly.ingested.mg, child.frequency.ingested.soil.events.day, #hours.awake, 
+       child.hand.soil.day, mom.hand.soil.day, child.obj.soil.day, child.direct.soil.day, amt.soil.ingested.mg.day) #sleep.day.24_36,
     #   mc(child.hand.soil.day, mom.hand.soil.day, child.obj.soil.day, hours.awake, amt.soil.ingested.mg.day)
   })
   
@@ -1460,10 +1446,11 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
 # # Generate an "ecdf" = empirical cumulative distribution function plot. This actually calls plot.mcnode().
 # plot(soilevalmcmodel.plot, xlim = c(0, 100), ylim = c(0, 1), main = "Daily Soil Consumption by Children in Rural Bangladesh <6 months old", ylab = "Proportion of Population", xlab = "Daily Consumption of Soil")
 
-soil.ingestion.results(age.group = "f6", title = "\n Soil ingestion among children <6 months")
-soil.ingestion.results(age.group = "6_12", title = "\n Soil ingestion among children 6-12 months")
-soil.ingestion.results(age.group = "12_24", title = "\n Soil ingestion among children 12-24 months")
-soil.ingestion.results(age.group = "24_36", title = "\n Soil ingestion among children 24-36 months")
+soil.ingestion.results(age.group = "f6", title = "\n Soil ingestion among children <6 months") # median 117
+soil.ingestion.results(age.group = "6_12", title = "\n Soil ingestion among children 6-12 months") # 377
+soil.ingestion.results(age.group = "12_24", title = "\n Soil ingestion among children 12-24 months") #407
+soil.ingestion.results(age.group = "24_36", title = "\n Soil ingestion among children 24-36 months") # 499
+# but one val missing the 36_48 category 646
 
 
 child.hand.soil <- (child.hand.soil.concentration.mg.cm2 * (child.hand.surface.area.cm2 * child.hand.fraction.mouthed)) * child.hand.mouth.frequency.events.hr * saliva.removal.efficiency * hours.awake
