@@ -54,7 +54,7 @@ library(plyr)
 library(dplyr)
 #library(compositions)
 
-ndvar <- 101 #1001, 10001 = number of simulations in the variability dimension
+ndvar <- 1001 #1001, 10001 = number of simulations in the variability dimension
 ndunc <- 10 # = number of simulations in the uncertainty dimension
 seed <- 888
 
@@ -502,12 +502,13 @@ qplot(C.hand.SA.WASHB.24_36, geom = "histogram", binwidth = 1)
 #dem_obs_full <- read.csv("C:/Users/Tareq/Box Sync/VO Longitudinal/count_mat_food_dem_fromSO_submitted to IJERPH 160313.csv")
 SO.allObs <- read.csv("C:/Users/Tareq/Dropbox/Fecal pathways/Structured obs/Analysis/SO_160310_submitted to IJERPH 160313/dem_obs_full_freq.csv")
 names(SO.allObs)
+# Create a table with the FREQ of hand-to-mouth contacts, starting with hand_m_tot_freq
 SO.HM.SM <- SO.allObs %>%
   filter(location == 3) %>%
-  mutate(round = "so.1", Mouth_hands_d = NA, Mouth_hands_nd = NA) %>%
-  select(participant_id,  round, age_SO_mo, age_SO_group, hand_m_tot_freq, Mouth_hands_d, Mouth_hands_nd, soil_m_tot_freq, soil_h_m_tot_freq)
+  mutate(round = "so1", Mouth_hands_child_nd = NA, Mouth_hands_child_d = NA, Mouth_hands_mom_nd = NA, Mouth_hands_mom_d = NA, mom_feeding_freq = NA) %>%
+  select(participant_id,  round, age_SO_mo, age_SO_group, hand_m_tot, hand_m_tot_freq, Mouth_hands_child_nd, Mouth_hands_child_d, Mouth_hands_mom_nd, Mouth_hands_mom_d, mom_feeding_freq, soil_m_tot_freq, soil_h_m_tot_freq)
 
-names(SO.HM.SM) <- c("hh", "round", "age", "age.group", "HM", "HM_d", "HM_nd", "SM", "SHM")
+names(SO.HM.SM) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq", "m_feeding_freq", "SM_freq", "SHM_freq")
 
 # ############ SO Data if I want to use the age group ################3
 # ## From SO of 149 kids
@@ -527,15 +528,34 @@ names(SO.HM.SM) <- c("hh", "round", "age", "age.group", "HM", "HM_d", "HM_nd", "
 
 # Load HM frequencies and soil ingestion frequencies for each individual, not hh
 ## Video Observations 
+VO.HM.SM.handscontacts <- hands_summary %>%
+  mutate(m_feeding_freq = NA, soil_m_tot_freq = NA, soil_h_m_tot_freq = NA) %>% # soil contacts are not recorded in hands_summary so soil_m_tot_freq and soil_h_m_tot_freq are NA
+  select(hh, vo.num, age.vo, age.vo.group, count_allhands, freq_allhands, freq_child_hands_nd, freq_child_hands_d, freq_other_hands_nd, freq_other_hands_d, m_feeding_freq, soil_m_tot_freq, soil_h_m_tot_freq)
+names(VO.HM.SM.handscontacts) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq", "m_feeding_freq", "SM_freq", "SHM_freq")
+
+# to get the soil contacts, use vo123.objclass.base
 vo123.objclass.base <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.11.objclass.csv")
-# vo123.objclass.base <- vo123.objclass.base[!is.na(vo123.objclass.base$round),]
-VO.HM.SM <- vo123.objclass.base %>%
-  filter(actobj.class %in% c("Mouth_hands", "Mouth_hands_d", "Mouth_hands_nd", "Mouth_soil")) %>%
+VO.HM.SM.soilcontacts <- vo123.objclass.base %>%
+  filter(actobj.class %in% c("Mouth_soil")) %>%
   select(hh, round, age.mo, age.group, actobj.class, freq) %>%
   spread(actobj.class, freq) %>%
-  mutate(soil_h_m_tot_freq = NA)
+  mutate(HM_count = NA, HM_freq = NA, HM_c_nd_freq = NA, HM_c_d_freq = NA, HM_m_nd_freq = NA, HM_m_d_freq = NA, m_feeding_freq = NA, soil_h_m_tot_freq = NA) %>%
+  select(hh, round, age.mo, age.group, HM_count, HM_freq, HM_c_nd_freq, HM_c_d_freq, HM_m_nd_freq, HM_m_d_freq, m_feeding_freq, Mouth_soil, soil_h_m_tot_freq)
+names(VO.HM.SM.soilcontacts) <- c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq", "m_feeding_freq", "SM_freq", "SHM_freq")
+VO.HM.SM.soilcontacts$hh <- as.factor(VO.HM.SM.soilcontacts$hh)
 
-names(VO.HM.SM) <- c("hh", "round", "age", "age.group", "HM", "HM_d", "HM_nd", "SM", "SHM")
+VO.HM.SM <- left_join(VO.HM.SM.handscontacts[,c("hh", "round", "age", "age.group", "HM_count", "HM_freq", "HM_c_nd_freq", "HM_c_d_freq", "HM_m_nd_freq", "HM_m_d_freq", "m_feeding_freq")], VO.HM.SM.soilcontacts[,c("hh", "round", "SM_freq", "SHM_freq")], by = c("hh", "round"))
+
+
+# vo123.objclass.base <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.11.objclass.csv")
+# # vo123.objclass.base <- vo123.objclass.base[!is.na(vo123.objclass.base$round),]
+# VO.HM.SM <- vo123.objclass.base %>%
+#   filter(actobj.class %in% c("Mouth_hands", "Mouth_hands_d", "Mouth_hands_nd", "Mouth_soil")) %>%
+#   select(hh, round, age.mo, age.group, actobj.class, freq) %>%
+#   spread(actobj.class, freq) %>%
+#   mutate(soil_h_m_tot_freq = NA)
+# 
+# names(VO.HM.SM) <- c("hh", "round", "age", "age.group", "HM", "HM_d", "HM_nd", "SM", "SHM")
 
 
 HM.SM <- rbind(SO.HM.SM, VO.HM.SM) %>%
@@ -605,6 +625,9 @@ HM.proportions <- left_join(hands_summary, feeding.mom.freq, by = c("vo.num", "h
 scatter.smooth(feeding.mom.freq$age.vo, feeding.mom.freq$feeding.mom.freq)
 # There is no trend by age, so use feeding freq from any age for a child of any age
 
+## Before 26 May 2017 I was calculatin ghtis WRONG - I had the proportion but did not multiply by the actual FREQUENCY of mouthing....
+## FOR THE STRUCTURED OBSERVATION ONLY, ESTIMATE THE BREAKDOWN OF CONTACTS BETWEEN MOTHER AND CHILD, DIETARY and NON
+## For the video observations, I can use the raw data
 # Make an array of vectors, where each vector is the child_nd, child_d, mom_nd, feeding.freq for each child in the age group
 # Then create a random sample of the indicies
 # Select the random index of the entire row and get the child_nd, child_d, mom_nd, or feeding.freq col and save as mcdata
@@ -640,6 +663,14 @@ HM.child.nd.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.24_36[HM
 HM.child.d.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.24_36[HM.proportions.index.24_36, 2], type = "V", nsv = ndvar())
 HM.mom.nd.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.24_36[HM.proportions.index.24_36, 3], type = "V", nsv = ndvar())
 HM.mom.d.events.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.24_36[HM.proportions.index.24_36, 4], type = "V", nsv = ndvar())
+
+HM.proportions.36_48 <- HM.proportions %>% filter(age.vo.group == 7) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, feeding.mom.freq) 
+HM.proportions.index.36_48 <- sample(c(1:nrow(HM.proportions.36_48)), size = ndvar(), replace = TRUE)
+HM.child.36_48.mcstoc <- mcstoc(rempiricalD, values = rowSums(HM.proportions.36_48[HM.proportions.index.36_48, c(1,2)], na.rm = TRUE), type = "V", nsv = ndvar())
+HM.child.nd.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.36_48[HM.proportions.index.36_48, 1], type = "V", nsv = ndvar())
+HM.child.d.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.36_48[HM.proportions.index.36_48, 2], type = "V", nsv = ndvar())
+HM.mom.nd.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.36_48[HM.proportions.index.36_48, 3], type = "V", nsv = ndvar())
+HM.mom.d.events.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.proportions.36_48[HM.proportions.index.36_48, 4], type = "V", nsv = ndvar())
 
 ## Code to determine the best-fitting distribution --> Weibull is the best for all 
 bestFitDist <- function(data, title, xaxis){
@@ -1041,6 +1072,9 @@ bestFitDist(data = sample((OM[OM$age > 24, "OM"] + 10e-4), ndvar(), replace = TR
 OM.24_36.dist <- fitdist(OM[OM$age > 24, "OM"], "weibull", method = "mle")
 OM.24_36.mcstoc <- mcstoc(rweibull, type="V", shape = OM.f6.dist$estimate[[1]], scale = OM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
+bestFitDist(data = sample((OM[OM$age > 24, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
+OM.36_48.dist <- fitdist(OM[OM$age > 24, "OM"], "weibull", method = "mle")
+OM.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = OM.f6.dist$estimate[[1]], scale = OM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
 ################# Surface area of object that is mouthed ################
 # Oz cites Leckie exponential(min = 1, mean = 10, max = 50)
@@ -1097,17 +1131,21 @@ OMRE.mcstoc <- mcstoc(rbeta, type = "V", shape1 = 2, shape2 = 8, rtrunc=TRUE, li
 ## BIg change made 26 May 2017: I had been using a triangular dist in mg improperly converted to g, currently all number are in the correct g amts
 #triangular distribution(min = 0.007  g , max =  0.070  g , mode =  0.020  mg) --> beta distribution
 fitdist(rtriangle(100000, 0.007, 0.070, 0.020), "beta", method = "mle") # For a triangular dist, the values must be 0-1
-hist(rtriangle(10000, 0.007, 0.070, 0.020))
+hist(rtriangle(10000, 0.007, 0.070, 0.020)) # amt in g
 
 # Fitting of the distribution ' beta ' by maximum likelihood 
 # Parameters:
 #   estimate Std. Error
 # shape1   5.295952 0.02297762
 # shape2 158.621280 0.72073235
-hist(rbeta(10000, 5.30, 158.62)) 
-summary(rbeta(10000, 5.30, 158.62))
-summary(rtriangle(100000, 0.007, 0.070, 0.020))
-SM.ingested.amt.mcstoc <- mcstoc(rbeta, type = "V", shape1 = 5.30, shape2 = 158.62, rtrunc=TRUE, linf=0)*100
+hist(rbeta(10000, 5.30, 158.62)) # amt in g
+## How do I convert this to a beta dist for mg? maybe it's just 100*beta(shape1, shape2)
+fitdist(rbeta(10000, 5.30, 158.62)*1000, "beta", method = "mle") # amt in mg? 
+summary(rbeta(10000, 5.30, 158.62)*1000) # amt in mg
+summary(rtriangle(100000, 0.007, 0.070, 0.020)*1000)
+
+# amt directly consumed per direction ingestion (in mg)
+SM.ingested.amt.mcstoc <- mcstoc(rbeta, type = "V", shape1 = 5.30, shape2 = 158.62, rtrunc=TRUE, linf=0)*1000
 
 
 
@@ -1264,15 +1302,14 @@ SM.fracfreq.24_36 <- mcprobtree(c(1 - SM.consumerfrac.p1.24_36, SM.consumerfrac.
 # As no direct soil consumption was observed among children 24-36 months old, 
 # their estimated soil ingestion rate would not increase from the inclusion of direct soil ingest in the model. 
 
-soil.direct.f6 <-  SM.fracfreq.f6 * SM.ingested.amt.mcstoc
-soil.direct.6_12 <-  SM.fracfreq.6_12 * SM.ingested.amt.mcstoc
-soil.direct.12_24 <- SM.fracfreq.12_24 * SM.ingested.amt.mcstoc
-soil.direct.24_36 <-  SM.fracfreq.24_36 * SM.ingested.amt.mcstoc
+soil.direct.f6 <-  SM.fracfreq.f6 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 1.24 mg
+soil.direct.6_12 <-  SM.fracfreq.6_12 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 19.5 mg
+soil.direct.12_24 <- SM.fracfreq.12_24 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 13.7 mg
+soil.direct.24_36 <-  SM.fracfreq.24_36 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 6.56 mg
 
 ##########################################################################
 
 ######## Convert times per hour to times per day by selecting DIFF hour freq for each hour awake during the day then summing ###
-
 
 ####################### Duration awake each day #########################
 # From Gallan, 2011
@@ -1282,8 +1319,7 @@ awake.hr.f6 <- 24 - mcstoc(rnorm, type = "V", mean = 13.6, sd = 2.1, rtrunc=TRUE
 awake.hr.6_12 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 1.3, rtrunc=TRUE, linf=0) # use for 6_12
 awake.hr.12_24 <- 24 - mcstoc(rnorm, type = "V", mean = 12.6, sd = 1.3, rtrunc=TRUE, linf=0) # use for 12-24
 awake.hr.24_36 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 24-36
-# awake.hr.24_36 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 24-36
-# awake.hr.36_48 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 36-48
+awake.hr.36_48 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=TRUE, linf=0) # use for 36-48
 
 
 # # By specific month of age
@@ -1292,13 +1328,80 @@ awake.hr.24_36 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=T
 # awake.hr.9 <- 24 - mcstoc(rnorm, type = "V", mean = 12.6, sd = 1.6, rtrunc=TRUE, linf=0) # use for 8, 9, 10 
 # awake.hr.12 <- 24 - mcstoc(rnorm, type = "V", mean = 12.9, sd = 1.4, rtrunc=TRUE, linf=0) # use for 11, 12
 
+# <6 mo
+# Do this code for ndvar() simulated children <6 months
+
+# Number of hours sample child is awake per DAY
+Aw.f6 <- sample(awake.hr.24_36, 1) 
+# OM.6_12 is number of contact/hr for all the observed children 6-12 months old, 
+# floor(AW.f6) is the whole number of hours the sample child <6 mo is wake in one day
+OM.Aw.f6.base <- sample(HM.child.d.24_36.mcstoc, floor(Aw.f6)) 
+# get the fraction hours awake (decimal of Aw.f6) using mod %% 1
+OM.Aw.f6.extra <- sample(HM.child.d.24_36.mcstoc, 1) * Aw.f6 %% 1
+OM.Aw.f6 <- sum(OM.Aw.f6.base, na.rm = TRUE) + OM.Aw.f6.extra # number of OM events per DAY
+        
 
 
 
+age.group.names <- c("f6", "6_12", "12_24", "24_36", "36_48")
+for(i in 1:length(age.group.names)){
+  age.group.name <- age.group.names[i]
+  assign(paste("mouthing.", age.group.name, sep = ""), matrix(NA, ncol = length(mouthing.types), nrow = ndvar, dimnames = list(NULL, mouthing.types)))
+}
+
+# types of mouthing (these are all in /hr and need to be converted to /day)
+mouthing.types <- c(
+  "HM.child", # non-dietary
+  "HM.child.d", # dietary
+  "HM.mom.nd", # caregiver non-dietary
+  "HM.mom.d.events", # caregiver dietary
+  "OM"
+  )
+
+## create a table for each age group f6, 6_12, 12_24, 24_36, 36_48 to store the daily
+# The table is ndvar() long with the col each of the mouthing types 
+allMouthingTable <- function(mouthing.type, age.group, i, j, mouthingTable){
+  Aw.age.group <- paste("Aw.", age.group, sep = "")
+  assign(Aw.age.group, sample(get(paste("awake.hr.", age.group, sep="")), 1))
+  assign(paste(mouthing.type, ".", Aw.age.group, ".base", sep = ""), sample(get(paste(mouthing.type, ".", age.group, ".mcstoc", sep = "")), floor(get(Aw.age.group))))
+  assign(paste(mouthing.type, ".", Aw.age.group, ".extra", sep = ""), sample(get(paste(mouthing.type, ".", age.group, ".mcstoc", sep = "")), 1) * get(Aw.age.group) %% 1)
+  assign(paste(mouthing.type, ".", age.group, sep = ""), sum(get(paste(mouthing.type, ".", Aw.age.group, ".base", sep = "")), na.rm = TRUE) + get(paste(mouthing.type, ".", Aw.age.group, ".extra", sep = "")))
+  mouthingTable[i, j] <- get(paste(mouthing.type, ".", age.group, sep = ""))
+  return(mouthingTable) ## yaya! Just like in Java. Otherwise I need to set mouthing.f6 to save in the global environment (I've passed a copy, not by reference into the funciton; don't know how to pass by ref in R)
+}
+
+for(k in 1:length(age.group.names)){
+  age.group <- age.group.names[k]
+  for(j in 1:length(mouthing.types)){
+    mouthing.type <- mouthing.types[j]
+    for(i in 1:ndvar){
+      mouthingTable <- get(paste("mouthing.", age.group, sep = ""))
+      assign(paste("mouthing.", age.group, sep = ""), allMouthingTable(mouthing.type, age.group, i, j, mouthingTable))
+    }
+  }
+}
+test <- sample(awake.hr.24_36, 1)
+test2 <- sample(HM.child.d.24_36.mcstoc, floor(test))
+test3 <- sample(HM.child.d.24_36.mcstoc, 1)* test%%1
+sum(test2, na.rm = TRUE) + test3
+
+sample(HM.mom.d.events.24_36.mcstoc, floor(test))
+sample(HM.mom.nd.24_36.mcstoc, floor(test))
+
+HM.child.d.24_36.mcstoc <- keep 
+OM.24_36.mcstoc <- keep2
+
+HM.child.d.24_36.mcstoc <- sample(1, 1001, replace = TRUE)
+OM.24_36.mcstoc <- sample(0, 1001, replace = TRUE)
+
+sample(sum(sample(get(paste("HM.child.d", ".", "24_36", ".mcstoc", sep = "")), 20), na.rm = TRUE) + sample(get(paste("HM.child.d", ".", "24_36", ".mcstoc", sep = "")), 1)*0.20, 1000)
 
 
-
-
+HM.child.24_36.mcstoc
+HM.child.d.24_36.mcstoc
+HM.mom.nd.24_36.mcstoc
+HM.mom.d.events.24_36.mcstoc
+OM.24_36.mcstoc
 
 
 
@@ -1748,19 +1851,19 @@ sd(anth.soilMass.wide$survey.age.mo.end) # sd = 2.09 (how did the sd get bigger 
 
 
 
-##### Incorp the bootstrap #########
-## https://cran.r-project.org/web/packages/mc2d/mc2d.pdf ## pg 36
-
-##Use of rempiricalD with nodes
-##A bootstrap
-ndunc(5)
-ndvar(5)
-dataset <- c(1:9)
-(b <- mcstoc(rempiricalD, "U", nvariates=9, values=dataset))
-unclass(b)
-##Then we build a VU node by sampling in each set of bootstrap
-(node <- mcstoc(rempiricalD, "VU", values=b))
-unclass(node)
+# ##### Incorp the bootstrap #########
+# ## https://cran.r-project.org/web/packages/mc2d/mc2d.pdf ## pg 36
+# 
+# ##Use of rempiricalD with nodes
+# ##A bootstrap
+# ndunc(5)
+# ndvar(5)
+# dataset <- c(1:9)
+# (b <- mcstoc(rempiricalD, "U", nvariates=9, values=dataset))
+# unclass(b)
+# ##Then we build a VU node by sampling in each set of bootstrap
+# (node <- mcstoc(rempiricalD, "VU", values=b))
+# unclass(node)
 
 
 
