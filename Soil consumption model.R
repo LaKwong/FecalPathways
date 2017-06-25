@@ -89,42 +89,39 @@ qplot(soilMass.base$soil.mg, geom="histogram", binwidth = 1)
 
 sum(soilMass.base$soil.mg <= 5)/length(soilMass.base$soil.mg) # 57.0% of observations (including the reps) are less than the LOD
 
-## Can try 1/2 the detection limit, though I remember hearing that there are better ways to handle this. 
-
-
-
 ##################################################################
 ###################################################################
 ## Conduct sensitivity analysis to det effect of choosing what happens to values < LOD
-#belowLOD_replacementValue <- 2.5
-#soilMass.base$soil.mg.halfLOD <- ifelse(soilMass.base$soil.mg <= 5, belowLOD_replacementValue, soilMass.base$soil.mg)
 
-#belowLOD_replacementValue <- runif(1, 0, 5)
-soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.halfLOD")] <- runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.halfLOD")]), 0, 5)
-soilMass.base[soilMass.base$soil.mg > 5, c("soil.mg.halfLOD")] <- soilMass.base[soilMass.base$soil.mg > 5, c("soil.mg")] 
-soilMass.base$soil.mg.halfLOD
-qplot(soilMass.base$soil.mg.halfLOD, geom="histogram", binwidth = 0.1)
+# Option 1: Replace values < LOD with 1/2 the LOD
+# belowLOD_replacementValue <- 2.5
+# soilMass.base$soil.mg.halfLOD <- ifelse(soilMass.base$soil.mg <= 5, belowLOD_replacementValue, soilMass.base$soil.mg) # could also do < 5
+# qplot(soilMass.base$soil.mg.halfLOD, geom="histogram", binwidth = 1)
+
+# Option 2: Replace values < LOD with uniform selection 0 to LOD
+soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.adjforLOD")] <- round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+soilMass.base[soilMass.base$soil.mg > 5, c("soil.mg.adjforLOD")] <- soilMass.base[soilMass.base$soil.mg > 5, c("soil.mg")]
+soilMass.base$soil.mg.adjforLOD
+qplot(soilMass.base$soil.mg.adjforLOD, geom="histogram", binwidth = 1)
 
 #####################################################################
 ####################################################################
-
-
-# AFTER replacing the values below the detection limit with 1/2 the detection limit, average the reps
+# AFTER replacing the values below the detection limit, average the reps
 soilMass.base.reps <- soilMass.base %>%
   filter(!is.na(rep.dup))
 
 soilMass.rep.means <- soilMass.base.reps %>%
   dplyr::group_by(hh, motherOrChild) %>%
   #group_by_(setdiff(names(soilMass.base), "rep.dup")) %>% # uses "group_by_" so I can use quoted columns; groups by all col except rep.dup
-  dplyr::summarise(soil.mg.halfLOD = mean(soil.mg.halfLOD, na.rm = TRUE))
+  dplyr::summarise(soil.mg.adjforLOD = mean(soil.mg.adjforLOD, na.rm = TRUE))
 
 # in soilMass.base, replace the reps with the rep mean
 # keep only REP 1, set the rep.dup col to null, remove the soil.mg col and merge with the soilMass.rep.means dataset by hh and motherOrChild to add the soil.mg col based on the means of the reps
 soilMass.reps <- soilMass.base.reps %>%
   filter(rep.dup == "REP1") %>%
-  select(-soil.mg.halfLOD) %>%
-  left_join(soilMass.rep.means[,c("hh", "motherOrChild", "soil.mg.halfLOD")], by = c("hh", "motherOrChild"))
-soilMass.reps$rep.dup = "NA"
+  select(-soil.mg.adjforLOD) %>%
+  left_join(soilMass.rep.means[,c("hh", "motherOrChild", "soil.mg.adjforLOD")], by = c("hh", "motherOrChild")) %>%
+  mutate(rep.dup = "NA")
 
 soilMass.NOreps <- soilMass.base %>%
   filter(is.na(rep.dup))
@@ -133,18 +130,8 @@ soilMass.NOreps <- soilMass.base %>%
 soilMass <- rbind(soilMass.NOreps, soilMass.reps) %>%
   arrange(hh)
 
-# In case the rep mean was <0.005g, replace again with 1/2 LOD
-##################################################################
-###################################################################
-## For now I will use this simple method and dig more into it later. 
-soilMass$soil.mg.halfLOD <- ifelse(soilMass$soil.mg < 5, 2.5, soilMass$soil.mg)
-qplot(soilMass$soil.mg.halfLOD, geom="histogram", binwidth = 1)
-
-#####################################################################
-####################################################################
-
 # Calculate the mass of soil on one hand by finding the mass / ml of sample tested, multiplying by the total sample volume (250 mL for children and 350 mL for mothers) and dividing by 2 to get the mass on one hand
-soilMass$soilOneHand.mg <- ((soilMass$soil.mg.halfLOD/soilMass$volSample.ml) * soilMass$volTotal.ml)/2
+soilMass$soilOneHand.mg <- ((soilMass$soil.mg.adjforLOD/soilMass$volSample.ml) * soilMass$volTotal.ml)/2
 qplot(soilMass$soilOneHand.mg, geom="histogram", binwidth = 1)
 
 soilMass.narrow <- soilMass[,c("hh", "RO1.round", "surveyDate.soil", "motherOrChild", "soilOneHand.mg")]
@@ -217,8 +204,8 @@ soil.M.load <- soil.M.load[!is.na(soil.M.load$soilOneHand.mg.mom),]
 
 length(soil.M.load) #130
 summary(soil.M.load)
-# Min.   1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 2.188   2.188   8.750   8.171   8.750  49.000
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0.000   3.500   7.000   8.461  11.380  49.000
 
 qplot(soil.M.load, geom = "histogram", binwidth = 1)
 
@@ -249,6 +236,8 @@ soil.M.load.mcstoc <- mcstoc(rempiricalD, values = soil.M.load, type="V", nsv = 
 #anth.soil.wide <- read.csv("C:/Users/Tareq/Box Sync/VO Fecal Intake Model/anth.soil.wide.csv")
 anth.soil.wide <- read.csv("C:/Users/Tareq/Box Sync/VO Fecal Intake Model/anth.soil.wide_const_HandSAratio.csv")
 
+
+
 anth.soil.wide <- anth.soil.wide %>%
   #filter(arm %in% c ("Control"))
   filter(arm %in% c ("Control", "Sanitation", "Handwashing", "Water", "WSH")) 
@@ -277,7 +266,7 @@ length(unique(anth.soil.wide$hh)) #3314 hh in the ("Control", "Sanitation", "Han
 sd(anth.soil.wide$survey.age.mo.mid, na.rm = TRUE)
 sd(anth.soil.wide$survey.age.mo.end, na.rm = TRUE)
 
-# # The code below shows that the kids whos hand we sampled are WAY older than the kids in WASHB, 
+# # The code below shows that the kids who's hand we sampled are WAY older than the kids in WASHB, 
 # # so can't use the WASHB anthro data to est g/cm2
 # 
 anth.soilMass.wide$age.soil.child.7 <- (anth.soilMass.wide$surveyDate.soil.child.7 - anth.soilMass.wide$unique_dob) / 365 * 12
@@ -424,14 +413,29 @@ soil.C.conc.long <- data.frame(combine(soil.C.conc.wide$soil.C.conc.7, soil.C.co
 names(soil.C.conc.long) <- "soil.C.conc"
 
 length(soil.C.conc.long) #68 observations
-summary(soil.C.conc.long$soil.C.conc)
+summary(soil.C.conc.long$soil.C.conc) ## These values are MUCH lower than the soil adherence values suggested by any of the Finley studies. 
+# MassDEP uses 1.5 mg/cm2 as conservative; lowest mentioned in Finley is Duggan 1985 with 0.12 mg/cm2 - mine are even lower than this!
+# But I don't think that my method is wrong.
 # Min.    1st Qu.  Median    Mean 3rd Qu.    Max.    NAs 
 # 0.00987 0.04104 0.04212 0.08092 0.09755 0.86670       3
 
 ##################################################################################################
+
+# Gallacher tested children near a roadside, cul de sac, old mining area, and control village
+# Finely reports that for all these four categoreis, the distribution of soil mass on hands is 
+# mean = 2.2, sd = 15.7, 50th percentile = 0.31, 94th = 6.6
+x <- seq(-4, 4, length=100)
+hx <- dnorm(x)
+
+test.data <- rnorm(100, 2.2, 15.7)
+# Assume that the roadside dwellings are the closest to Bengali homes in terms of dust levels
+
+
+
 ##########################################################################################
 ######### Should soil.C.conc or soil.M.conc be a logrithmic dist? 
 qplot(soil.C.conc.long, geom = "histogram", binwidth = 0.01)
+
 
 soil.C.conc <- mcstoc(rempiricalD, values = soil.C.conc.long$soil.C.conc, type="V", nsv = ndvar())
 #soil.C.conc <- mcdata(sample(soil.C.conc.long$soil.C.conc, size=ndvar(), replace=TRUE),type="V")
