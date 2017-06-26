@@ -56,6 +56,7 @@ library(goftest)
 library(plyr)
 library(dplyr)
 #library(compositions)
+'%notin%' <- function(x, y) { !(x %in% y)}
 
 ndvar <- 1001 #1001, 10001 = number of simulations in the variability dimension
 ndunc <- 10 # = number of simulations in the uncertainty dimension
@@ -80,7 +81,7 @@ soilMass.base$survey.yr <- 2016
 soilMass.base$surveyDate.soil <- dmy(paste(as.numeric(soilMass.base$survey.day), as.numeric(soilMass.base$survey.month), soilMass.base$survey.yr, sep = "-"))
 soilMass.base$soil.g <- soilMass.base$filterSoilMass.g - soilMass.base$filterMass.g
 soilMass.base$soil.mg <- (soilMass.base$filterSoilMass.g - soilMass.base$filterMass.g)*1000
-soilMass.base$soil.mg.halfLOD <- NA
+soilMass.base$soil.mg.adjforLOD <- NA
 
 #### Think about the detection limit! The precision of the scale is 5 mg = 0.005 g, so anything less than 0.005 g should be treated as...
 ## THIS ASSUMPTION WILL MAKE A BIG DIFFERENCE
@@ -98,15 +99,27 @@ sum(soilMass.base$soil.mg <= 5)/length(soilMass.base$soil.mg) # 57.0% of observa
 # soilMass.base$soil.mg.halfLOD <- ifelse(soilMass.base$soil.mg <= 5, belowLOD_replacementValue, soilMass.base$soil.mg) # could also do < 5
 # qplot(soilMass.base$soil.mg.halfLOD, geom="histogram", binwidth = 1)
 
-# Option 2: Replace values < LOD with uniform selection 0 to LOD
-soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.adjforLOD")] <- round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+# Option 2: Replace values < LOD with uniform selection 0 to LOD 
+test <- soilMass.base %>%
+  mutate(soil.mg.adjforLOD = ifelse(soil.mg <= 5 & motherOrChild == "CH" & volSample.ml == 50, round(runif(1, 0, 5), digits = 0),1000))
+         
+soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.adjforLOD")] <- runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.halfLOD")]), 0, 5)
+# code for making the LOD replacement - specific to Child vs Mother and aliquot tested - don't need to do this because this is captured in the soil on one hand calc where I divide by the size of the aliquot and multiply by the total sample vol - if the adjLOD for the sample is 5 then I can get from 
+# soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 50, c("soil.mg.adjforLOD")] <- 
+#   round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 50, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+# soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 200, c("soil.mg.adjforLOD")] <- 
+#   round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 200, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+# soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 50, c("soil.mg.adjforLOD")] <- 
+#   round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 50, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+# soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 200, c("soil.mg.adjforLOD")] <- 
+#   round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 200, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
 soilMass.base[soilMass.base$soil.mg > 5, c("soil.mg.adjforLOD")] <- soilMass.base[soilMass.base$soil.mg > 5, c("soil.mg")]
 soilMass.base$soil.mg.adjforLOD
 qplot(soilMass.base$soil.mg.adjforLOD, geom="histogram", binwidth = 1)
 
 #####################################################################
 ####################################################################
-# AFTER replacing the values below the detection limit, average the reps
+# BEFORE replacing the values below the detection limit, average the reps - doesn't make sense to average a value that don't at all trust was accurate. Intead just take the (more) accurate value (the one > LOD)
 soilMass.base.reps <- soilMass.base %>%
   filter(!is.na(rep.dup))
 
@@ -132,6 +145,17 @@ soilMass <- rbind(soilMass.NOreps, soilMass.reps) %>%
 
 # Calculate the mass of soil on one hand by finding the mass / ml of sample tested, multiplying by the total sample volume (250 mL for children and 350 mL for mothers) and dividing by 2 to get the mass on one hand
 soilMass$soilOneHand.mg <- ((soilMass$soil.mg.adjforLOD/soilMass$volSample.ml) * soilMass$volTotal.ml)/2
+
+## Now replace the samples that were < LOD with replacements that are specific to Child vs Mother and aliquot of 50 vs 200
+soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 50, c("soil.mg.adjforLOD")] <-
+  round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 50, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 200, c("soil.mg.adjforLOD")] <-
+  round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 200, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 50, c("soil.mg.adjforLOD")] <-
+  round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 50, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 200, c("soil.mg.adjforLOD")] <-
+  round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 200, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+
 qplot(soilMass$soilOneHand.mg, geom="histogram", binwidth = 1)
 
 soilMass.narrow <- soilMass[,c("hh", "RO1.round", "surveyDate.soil", "motherOrChild", "soilOneHand.mg")]
@@ -403,50 +427,200 @@ M.hand.SA.WASHB.mcstoc <- mcstoc(rnorm, type="V", mean = M.hand.SA.WASHB.dist$es
 
 
 ############## Est soil concentration on hands based on measured soil load for RO1 children and mothers and WASHB data for hand surface area ################
-# Use the actual load divided by the est hand.SA based on age
+# Use the actual load divided by the est hand.SA based on # 
+
+ ####### To est the soil adherence ON THE PORTION OF SKIN THAT IS CARRYING SOIL AND NOT ON THE OTHER PORTION, divide not by the total hand surface area but only on the "contaminated" surface area on the front of the hand 
+# get the contaminated surface area on the front of the hand from Leckie_2000 page 489 - floor 23%, ceiling 35%
+
+anth.soilMass.wide <- anth.soilMass.wide %>%
+  mutate(frac.C.hand.contaminated = runif(nrow(anth.soilMass.wide), 0.23, 0.35)) %>% #, frac.M.hand.contaminated = runif(nrow(anth.soilMass.wide), 0.23, 0.35)) %>% 
+  mutate(SA.C.hand.contaminated.7 = child.hand.SA.age.soil.7 * frac.C.hand.contaminated, SA.C.hand.contaminated.8 = child.hand.SA.age.soil.8 * frac.C.hand.contaminated)
+  
 anth.soilMass.wide[anth.soilMass.wide$hh %in% soilMass.wide$hh, c("child.hand.SA.age.soil.7", "soilOneHand.mg.child.7", "child.hand.SA.age.soil.8", "soilOneHand.mg.child.8")]
-soil.C.conc.wide <- anth.soilMass.wide %>%
-  filter(hh %in% soilMass.wide$hh) %>%
-  mutate(soil.C.conc.7 = soilOneHand.mg.child.7 / child.hand.SA.age.soil.7, soil.C.conc.8 = soilOneHand.mg.child.8 / child.hand.SA.age.soil.8) %>%
-  select(soil.C.conc.7, soil.C.conc.8)
-soil.C.conc.long <- data.frame(combine(soil.C.conc.wide$soil.C.conc.7, soil.C.conc.wide$soil.C.conc.8))
+
+anth.soilMass.wide <- anth.soilMass.wide %>%
+  mutate(soil.C.conc.7 = soilOneHand.mg.child.7 / SA.C.hand.contaminated.7, soil.C.conc.8 = soilOneHand.mg.child.8 / SA.C.hand.contaminated.8) #%>%
+soil.C.conc.long <- data.frame(combine(anth.soilMass.wide$soil.C.conc.7, anth.soilMass.wide$soil.C.conc.8))
 names(soil.C.conc.long) <- "soil.C.conc"
 
+
 length(soil.C.conc.long) #68 observations
-summary(soil.C.conc.long$soil.C.conc) ## These values are MUCH lower than the soil adherence values suggested by any of the Finley studies. 
+summary(soil.C.conc.long$soil.C.conc) 
 # MassDEP uses 1.5 mg/cm2 as conservative; lowest mentioned in Finley is Duggan 1985 with 0.12 mg/cm2 - mine are even lower than this!
-# But I don't think that my method is wrong.
-# Min.    1st Qu.  Median    Mean 3rd Qu.    Max.    NAs 
-# 0.00987 0.04104 0.04212 0.08092 0.09755 0.86670       3
+#     Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+# 0.00000 0.08089 0.20240 0.29570 0.41790 3.53500       3
 
-##################################################################################################
-
-# Gallacher tested children near a roadside, cul de sac, old mining area, and control village
-# Finely reports that for all these four categoreis, the distribution of soil mass on hands is 
-# mean = 2.2, sd = 15.7, 50th percentile = 0.31, 94th = 6.6
-x <- seq(-4, 4, length=100)
-hx <- dnorm(x)
-
-test.data <- rnorm(100, 2.2, 15.7)
-# Assume that the roadside dwellings are the closest to Bengali homes in terms of dust levels
-
-
-
-##########################################################################################
-######### Should soil.C.conc or soil.M.conc be a logrithmic dist? 
-qplot(soil.C.conc.long, geom = "histogram", binwidth = 0.01)
-
-
-soil.C.conc <- mcstoc(rempiricalD, values = soil.C.conc.long$soil.C.conc, type="V", nsv = ndvar())
+soil.C.empirical.36mo.conc <- mcstoc(rempiricalD, values = soil.C.conc.long$soil.C.conc, type="V", nsv = ndvar())
 #soil.C.conc <- mcdata(sample(soil.C.conc.long$soil.C.conc, size=ndvar(), replace=TRUE),type="V")
 
-soil.M.conc <- soil.M.load.mcstoc / M.hand.SA.WASHB.mcstoc #M.hand.SA.WASHB.end.mcstoc 
+##################################################################################################
+ ### Figure out the soil adherence for younger children, who contact the soil more frequently ######
+
+# If we want to base it on the weibull distribution:
+# load frequency of soil contacts
+voso.11.objclass.full <- read.csv("C:/Users/Tareq/Box Sync/VO R123/voso.11.objclass.full.csv")
+
+# Touching FREQUENCY
+vo.11.objclass.summary <- voso.11.objclass.full %>%
+  filter(round != "so1", actobj.class == "Touch_soil") %>%
+  group_by(age.group) %>%
+  summarise(freq.med = median(freq, na.rm = TRUE), freq.mean = mean(freq, na.rm = TRUE), freq.sd = sd(freq, na.rm = TRUE))
+
+# 
+# # What distribution describes the touching freq for each age group? (This code is from VO_Longitudinal Analysis_170614)
+# ## The code below shows that Weibull fits very well for all the data combined
+# ## I will use non-parametric tests for analysis. However, I think it would be appropriate to use parametric tests since the fit to normal is so close. 
+# Kwong.tbl <- voso.11.objclass.full %>% ungroup() %>% filter(actobj.class == "Touch_soil") %>% select(freq) # age.group %in% c("6-12 months", "12-24 months", "24-36 months", "36-48 months"))
+# Kwong <- as.vector(unlist(Kwong.tbl))
+# qplot(Kwong, geom = "histogram", binwidth = 10)
+# plot(ecdf(Kwong),xlab="", ylab="",main="")
+# 
+# #Kolmogorov-Smirnov, Cramer-von-Mises and Anderson Darling, Chi-square
+# norm  <-  fitdistr(na.omit(Kwong), densfun="normal")
+# curve(pnorm(x, mean=norm$estimate[1], sd=norm$estimate[2]),from=0, to=200, add=TRUE,col="blue",lwd=2)
+# ks.test(Kwong,rnorm(68, mean=norm$estimate[1], sd=norm$estimate[2]),alternative="two.sided") #D=0. ,p=0.
+# cvm.test(Kwong,"pnorm",mean=norm$estimate[1], sd=norm$estimate[2]) #omega2=0. ,p=0.
+# ad.test(Kwong,"pnorm",mean=norm$estimate[1], sd=norm$estimate[2]) #An=0. ,p=0. 
+# chisq.test(Kwong,rnorm(68, mean=norm$estimate[1], sd=norm$estimate[2]))#x= 
+# 
+# lognorm  <-  fitdistr(na.omit(Kwong[Kwong != 0]), densfun="lognormal")
+# curve(plnorm(x, meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]),from=0, to=200, add=TRUE,col="red",lwd=2)
+# ks.test(Kwong,rlnorm(68, meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]),alternative="two.sided") #D=0. ,p=0.
+# cvm.test(Kwong,"plnorm",meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]) #omega2=0. ,p=0.
+# ad.test(Kwong,"plnorm",meanlog=lognorm$estimate[1], sdlog=lognorm$estimate[2]) #An=0. ,p=0.
+# chisq.test(Kwong,rlnorm(68, meanlog=lognorm$estimate[1], sdlog=lognorm$estimate [2])) #x= ,p=0.
+# 
+# weib  <-  fitdistr(na.omit(Kwong[Kwong != 0]), densfun=dweibull,start=list(scale=10,shape=1), method = "Nelder-Mead")
+# curve(pweibull(x, scale=weib$estimate[1], shape=weib$estimate[2]),from=0, to=200, add=TRUE,col="green",lwd=2)
+# ks.test(Kwong,rweibull(68, scale=weib$estimate[1], shape=weib$estimate[2]),alternative="two.sided") #D=0. ,p=0.
+# cvm.test(Kwong,"pweibull",scale=weib$estimate[1], shape=weib$estimate[2]) #omega2=0. ,p=0. 
+# ad.test(Kwong,"pweibull",scale=weib$estimate[1], shape=weib$estimate[2]) #An=0. , p=0.
+# chisq.test(Kwong,rweibull(68, scale=weib$estimate[1], shape=weib$estimate[2]))#x= ,p=0.
+# 
+# legend("topleft",legend=c("normal","lognormal","Weibull"),col=c("blue","red","green"),lty=c(1,1,1),lwd=c(2,2,2))
+# title(main="Soil touching by Bangladeshi children", xlab="Frequency (contacts/hr)",ylab="Percentile")
+# 
+# fitdistr(na.omit(Kwong.tbl[Kwong.tbl$freq != 0 & Kwong.tbl$age.group %in% "6-12 months", "freq"]), densfun=dweibull,start=list(scale=10,shape=1), method = "Nelder-Mead")
+# 
+# vo.11.loc.objclass <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.11.loc.objclass.csv")
+# names(vo.11.loc.objclass)
+# vo.11.loc.objclass <- vo.11.loc.objclass %>%
+#   select(-X)
+# 
+# touch.soil.weib <- matrix(NA, nrow = 2, ncol = 10)
+# m = 1
+# n = 1
+# # I can't get the loop below to save var to .GlobalEnv
+# for (actobj.type in c( "Touch_soil")){ #"Mouth_hands_d",
+#   for (location in c("Inside", "Outside")){
+#     for (ages in 4:7){
+#       assign(paste("vo.11", ages, location, actobj.type, sep = "."), vo.11.loc.objclass %>%
+#                filter(age.group == ages, loc == location, actobj.class == actobj.type)) #, envir = .GlobalEnv)
+#       assign(paste("weib", ages, location, actobj.type, sep = "."), fitdistr(na.omit(get(paste("vo.11", ages, location, actobj.type, sep = "."))$freq), densfun=dweibull, start=list(scale=10, shape=1), method="Nelder-Mead"), envir = .GlobalEnv) # if get error of non-finite finite differences, try changing the start values or using method="Nelder-Mead"
+#       weib <- fitdistr(na.omit(get(paste("vo.11", ages, location, actobj.type, sep = "."))$freq), densfun=dweibull, start=list(scale=10, shape=1), method="Nelder-Mead") # if get error of non-finite finite differences, try changing the start values or using method="Nelder-Mead"
+#       #assign(paste("shape", age.group, location, actobj.type,sep = "."), as.numeric(weib$estimate[2])) #, envir = .GlobalEnv)
+#       shape <- as.numeric(weib$estimate[2]) #, envir = .GlobalEnv)
+#       #assign(paste("scale", age.group, location, actobj.type,sep = "."), as.numeric(weib$estimate[1])) #, envir = .GlobalEnv)
+#       scale <- as.numeric(weib$estimate[1]) #, envir = .GlobalEnv)
+#       touch.soil.weib[m, n] <- shape
+#       touch.soil.weib[m, n+1] <- scale
+#       n = n+2
+#     }
+#     n = 1
+#     m = m+1
+#   }
+# }
+# touch.soil.weib
+# colnames(touch.soil.weib) <- c("4.shape", "4.scale", "5.shape", "5.scale", "6.shape", "6.scale", "7.shape", "7.scale", "extra", "extra")
+# row.names(touch.soil.weib) <- c("touch.soil.in", "touch.soil.out") #"hands_d.in", "hands_d.out", 
+# write.csv(touch.soil.weib, "C:/Users/Tareq/Box Sync/VO Soil/Touching.soil.weib.shape.scale.csv")
+
+# If we just want to base it on the summaries: Frequency of touching soil: 
+#   2 of 2 children <6 mo, med 35.6, mean 35.9 (inside contacts med 0.4 by child 71105, outside contacts mean 80.7 by child 66506);
+# 19 of 19 children 6-12 mo; med 128.2, mean 130.7 contacts/hr; 
+# 28 of 28 children 12-24 mo, med 24.55, mean 38.27 contacts/hr, 
+# 22 of 23 24-36 mo, med 11.4, mean 20.6 contacts/hr, 6 of 6 children 36-48 mo, med 4, mean 3.63 contacts/hr
+
+# But the number of CONSECUTIVE contacts is much lower and very similar for children. 
+# Non-consecutive contacts will likely reduce the load of soil on children's hands and allow them to have high reloading when they do touch soil again. 
+vo.9.loc <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.9.analyze.csv") #1202536
+vo.9.loc.base <- vo.9.loc %>%
+  mutate(hh = as.factor(hh), round = as.factor(vo.num), age.mo = age.vo, age.group = age.vo.group)
+vo.9.long.loc<- vo.9.loc.base %>% select(-X, -vo.num, -age.vo, -age.vo.group)
+
+# https://stackoverflow.com/questions/19998836/create-a-sequential-number-counter-within-each-contiguous-run-of-equal-values
+# sequence(rle(as.character(dataset$input))$lengths)
+vo.9.touch.soil <- vo.9.long.loc %>%
+  arrange(round, hh, clip, coder, hand, realtime) %>%
+  filter(act == "Touch", obj %notin% c("Nothing", "NotInView"), actobj.class != "NA_NA")
+vo.9.touch.soil$lengths <- sequence(rle(as.character(vo.9.touch.soil$actobj.class))$lengths)
+vo.9.touch.soil %>%
+  filter(actobj.class == "Touch_soil") %>%
+  group_by(age.group) %>% #hand
+  summarise(median = median(lengths), mean = mean(lengths), sd = sd(lengths), max = max(lengths))
+# The median (max) number of consecutive soil contacts among children <6 mo was 2 (14), among children 6-12 mo 3 (37), 
+# among children 12-24 mo 2 (59), among children 24-36 mo 1 (17), among children 36-48 mo 1 (3)
+
+### BUT DO NOT ASSUME THAT THE ADHERENCE FACTOR SCALES LINEARALY - RODES 2001 finds that consecutive presses decreased the transfer factor by 3, requiring ~100 presses to reach equilibrium
+# Assume that we took the hand rinse sample when the hand was at pseudo-equilibrium, which Rodes says is reached after ~100 contacts
+# Tim Julian suggests there is a similar equilibrium with rotavirus after 10 min of contacts (and there is approx 33 seconds between each contact so 10 min = 20 contacts)
+c = 0.65
+total = 0
+for(i in 0:36){
+  total = total + sum(c/3^i)
+}
+total
+# Since the drop-off is so quick, the load after 4 contacts is approximately equal to the load after 100 contacts
+
+# For the median = 0.132, initial contact transfers 0.09, after 4 contacts load = 0.1311, 100 contacts = 0.135
+# For the mean = 0.293, initial contact transfers 0.20 mg/cm2, after 4 contacts load = 0.291, 100 contacts = 0.300
+# For the min = 0.0141, initial contact transfers 0.01 mg/cm2, after 4 contacts load = 0.0145, 100 contacts = 0.015
+# For the max = 0.951, initial contact transfers 0.65 mg/cm2, after 4 contacts load = 0.946, 11 contacts = 0.975, 25 contacts = 0.975, 36 contacts = 0.975, 100 contacts = 0.975, 128 contacts = 0.975
+
+# Based on data in Rodes_2001_Figure 5
+dermal.frac.transferred <- data.frame(x = seq(1, 56, 5), y = c(64, 46, 72, 56, 40, 48, 28, 42, 18, 42, 9, 37)) #, rep(NA, 9)
+model <- lm(log(dermal.frac.transferred$y) ~ dermal.frac.transferred$x)
+plot(dermal.frac.transferred$x, dermal.frac.transferred$y, type = "p", lwd = 3)
+lines(dermal.frac.transferred$x, exp(model$fit), col = "red")
+x = 3
+exp(4.2185 + (-0.02136)*x)
+# After 1 contacts = 66.5
+# After 2 contacts = 65.1
+# After 3 contacts = 63.7
+# After 100 contacts = 8.04
+# After 130 contacts = 4.23
+# After 150 contacts = 2.7
+# After 200 contacts = 0.949
+
+# with three additional datapoints that Rodes made up in order to get things to level off:
+# dermal.frac.transferred <- data.frame(x = seq(1, 71, 5), y = c(64, 46, 72, 56, 40, 48, 28, 42, 18, 42, 9, 37, 24, 22, 20)) #, rep(NA, 9)
+# result in the equation: exp(4.14 + (-0.01779)*x)
+# After 100 contacts = 8.04
+# After 130 contacts = 4.23
+# After 150 contacts = 2.7
+# After 200 contacts = 0.949
+
+
+# The difference in concentration between the surface and the hand drives the transfer, so at some point an equilibrium will be reached. 
+# In in rural Bangladesh (at least outdoors) the dislodgable residue is very, very high.
+
+# So on the hand we have 0.08 mg/cm2, which we assume is the long-term equilibrium
+
+
+
+soil.C.conc.f6 <- soil.C.empirical.36mo.conc * as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "3-6 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+soil.C.conc.6_12 <- soil.C.empirical.36mo.conc * as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "6-12 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+soil.C.conc.12_24 <- soil.C.empirical.36mo.conc * as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "12-24 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+soil.C.conc.24_36 <- soil.C.empirical.36mo.conc * as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "24-36 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+soil.C.conc.36_48 <- soil.C.empirical.36mo.conc
+
+soil.M.conc <- soil.M.load.mcstoc / (M.hand.SA.WASHB.mcstoc * runif(ndvar(), 0.23, 0.35)) #M.hand.SA.WASHB.end.mcstoc 
 #soil.M.conc <- soil.M.load.mcdata / M.hand.SA.WASHB.mcstoc #M.hand.SA.WASHB.end.mcstoc 
 
 # Ozkaynak Soil adherence to hands mg/cm2 : mcstoc(rlnorm, type = "V", meanlog = log(0.11), sdlog = log(2.0)) * Oz reports logrithmic dist with geometric mean = 0.11 and geometric sd = 2.0
 # Produces values ~ double my estimates...not sure what to do about this....
 # My est
-# > soil.C.conc
+# > soil.C.conc_24_36
 # node    mode  nsv nsu nva variate     min   mean median   max  Nas type outm
 # 1    x numeric 1001 101   1       1 0.00987 0.0811 0.0421 0.867 4453   VU each
 
