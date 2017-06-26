@@ -24,19 +24,15 @@
 # # Could use sevenday parental report as long-term average fraction of children consuming soil, BUT I am only modeling for ONE day so I should use only the one-day results. 
 # # Otherwise I will overestimate the daily (though be closer to the long-term average?) 
 
+### Since the mouthing frequencies do not follow distinct age group categories, group by month of age instead. This will create small n in many categories ###
+## How to account for correlation within the same child? For now, ignore
 
 
 #### To replace na using dplyr! ######333
 # df %>% replace(is.na(.), 0)
 
 
-######### Simple soil model ##############
-
 ### Always calculate for ONE hand
-
-### Since the mouthing frequencies do not follow distinct age group categories, group by month of age instead. This will create small n in many categories ###
-## How to account for correlation within the same child? For now, ignore
-
 library(readxl)
 library(tidyr)
 library(mc2d)
@@ -62,8 +58,6 @@ ndvar <- 1001 #1001, 10001 = number of simulations in the variability dimension
 ndunc <- 10 # = number of simulations in the uncertainty dimension
 seed <- 888
 
-
-
 #####################################################################################
 #####################################################################################
 
@@ -72,16 +66,14 @@ seed <- 888
 #####################################################################################
 ######################################################################################
 
-
 # Load soil mass data
-
 soilMass.base <- read_excel("C:/Users/Tareq/Box Sync/VO Soil/Mass of soil on children's hands/Soil mass_RO1_analysis.xlsx", sheet = "final")
 soilMass.base <- soilMass.base[1:272,c("hh", "RO1.round", "survey.day", "survey.month", "rep.dup", "motherOrChild", "volTotal.ml", "volSample.ml", "filterMass.g", "filterSoilMass.g")]
 soilMass.base$survey.yr <- 2016
 soilMass.base$surveyDate.soil <- dmy(paste(as.numeric(soilMass.base$survey.day), as.numeric(soilMass.base$survey.month), soilMass.base$survey.yr, sep = "-"))
 soilMass.base$soil.g <- soilMass.base$filterSoilMass.g - soilMass.base$filterMass.g
 soilMass.base$soil.mg <- (soilMass.base$filterSoilMass.g - soilMass.base$filterMass.g)*1000
-soilMass.base$soil.mg.adjforLOD <- NA
+soilMass.base$soil.mg.lessthanLOD <- NA
 
 #### Think about the detection limit! The precision of the scale is 5 mg = 0.005 g, so anything less than 0.005 g should be treated as...
 ## THIS ASSUMPTION WILL MAKE A BIG DIFFERENCE
@@ -90,34 +82,16 @@ qplot(soilMass.base$soil.mg, geom="histogram", binwidth = 1)
 
 sum(soilMass.base$soil.mg <= 5)/length(soilMass.base$soil.mg) # 57.0% of observations (including the reps) are less than the LOD
 
-##################################################################
-###################################################################
 ## Conduct sensitivity analysis to det effect of choosing what happens to values < LOD
 
 # Option 1: Replace values < LOD with 1/2 the LOD
 # belowLOD_replacementValue <- 2.5
 # soilMass.base$soil.mg.halfLOD <- ifelse(soilMass.base$soil.mg <= 5, belowLOD_replacementValue, soilMass.base$soil.mg) # could also do < 5
-# qplot(soilMass.base$soil.mg.halfLOD, geom="histogram", binwidth = 1)
 
 # Option 2: Replace values < LOD with uniform selection 0 to LOD 
-test <- soilMass.base %>%
-  mutate(soil.mg.adjforLOD = ifelse(soil.mg <= 5 & motherOrChild == "CH" & volSample.ml == 50, round(runif(1, 0, 5), digits = 0),1000))
-         
-soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.adjforLOD")] <- runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5, c("soil.mg.halfLOD")]), 0, 5)
-# code for making the LOD replacement - specific to Child vs Mother and aliquot tested - don't need to do this because this is captured in the soil on one hand calc where I divide by the size of the aliquot and multiply by the total sample vol - if the adjLOD for the sample is 5 then I can get from 
-# soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 50, c("soil.mg.adjforLOD")] <- 
-#   round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 50, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
-# soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 200, c("soil.mg.adjforLOD")] <- 
-#   round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 200, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
-# soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 50, c("soil.mg.adjforLOD")] <- 
-#   round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 50, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
-# soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 200, c("soil.mg.adjforLOD")] <- 
-#   round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 200, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
-soilMass.base[soilMass.base$soil.mg > 5, c("soil.mg.adjforLOD")] <- soilMass.base[soilMass.base$soil.mg > 5, c("soil.mg")]
-soilMass.base$soil.mg.adjforLOD
-qplot(soilMass.base$soil.mg.adjforLOD, geom="histogram", binwidth = 1)
+soilMass.base <- soilMass.base %>%
+  mutate(soil.mg.lessthanLOD = ifelse(soil.mg <= 5, NA, soil.mg))
 
-#####################################################################
 ####################################################################
 # BEFORE replacing the values below the detection limit, average the reps - doesn't make sense to average a value that don't at all trust was accurate. Intead just take the (more) accurate value (the one > LOD)
 soilMass.base.reps <- soilMass.base %>%
@@ -126,14 +100,14 @@ soilMass.base.reps <- soilMass.base %>%
 soilMass.rep.means <- soilMass.base.reps %>%
   dplyr::group_by(hh, motherOrChild) %>%
   #group_by_(setdiff(names(soilMass.base), "rep.dup")) %>% # uses "group_by_" so I can use quoted columns; groups by all col except rep.dup
-  dplyr::summarise(soil.mg.adjforLOD = mean(soil.mg.adjforLOD, na.rm = TRUE))
+  dplyr::summarise(soil.mg.lessthanLOD = mean(soil.mg.lessthanLOD, na.rm = TRUE))
 
 # in soilMass.base, replace the reps with the rep mean
 # keep only REP 1, set the rep.dup col to null, remove the soil.mg col and merge with the soilMass.rep.means dataset by hh and motherOrChild to add the soil.mg col based on the means of the reps
 soilMass.reps <- soilMass.base.reps %>%
   filter(rep.dup == "REP1") %>%
-  select(-soil.mg.adjforLOD) %>%
-  left_join(soilMass.rep.means[,c("hh", "motherOrChild", "soil.mg.adjforLOD")], by = c("hh", "motherOrChild")) %>%
+  select(-soil.mg.lessthanLOD) %>%
+  left_join(soilMass.rep.means[,c("hh", "motherOrChild", "soil.mg.lessthanLOD")], by = c("hh", "motherOrChild")) %>%
   mutate(rep.dup = "NA")
 
 soilMass.NOreps <- soilMass.base %>%
@@ -143,23 +117,26 @@ soilMass.NOreps <- soilMass.base %>%
 soilMass <- rbind(soilMass.NOreps, soilMass.reps) %>%
   arrange(hh)
 
+#####################################################################
+
 # Calculate the mass of soil on one hand by finding the mass / ml of sample tested, multiplying by the total sample volume (250 mL for children and 350 mL for mothers) and dividing by 2 to get the mass on one hand
-soilMass$soilOneHand.mg <- ((soilMass$soil.mg.adjforLOD/soilMass$volSample.ml) * soilMass$volTotal.ml)/2
+soilMass$soilOneHand.mg <- ifelse(is.nan(soilMass$soil.mg.lessthanLOD) | is.na(soilMass$soil.mg.lessthanLOD), NA, ((soilMass$soil.mg.lessthanLOD/soilMass$volSample.ml) * soilMass$volTotal.ml)/2)
 
 ## Now replace the samples that were < LOD with replacements that are specific to Child vs Mother and aliquot of 50 vs 200
-soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 50, c("soil.mg.adjforLOD")] <-
-  round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 50, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
-soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 200, c("soil.mg.adjforLOD")] <-
-  round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "CH" & soilMass.base$volSample.ml == 200, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
-soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 50, c("soil.mg.adjforLOD")] <-
-  round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 50, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
-soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 200, c("soil.mg.adjforLOD")] <-
-  round(runif(nrow(soilMass.base[soilMass.base$soil.mg <= 5 & soilMass.base$motherOrChild == "MH" & soilMass.base$volSample.ml == 200, c("soil.mg.halfLOD")]), 0, 5), digits = 0)
+# For children's samples in which the mass of soil on two hands was estimated based on processing a 50-mL hand rinse aliquot, the limit of detection was 12.5 mg/hand; for a 200-mL aliquot the limit of detection was 3.1 mg/hand. For mothers' samples, the respective limits were 17.5 mg/hand and 4.4 mg/hand.  
+soilMass[is.na(soilMass$soilOneHand.mg) & soilMass$motherOrChild == "CH" & soilMass$volSample.ml == 50, c("soilOneHand.mg")] <-
+  round(runif(nrow(soilMass[is.na(soilMass$soilOneHand.mg) & soilMass$motherOrChild == "CH" & soilMass$volSample.ml == 50, c("soilOneHand.mg")]), 0, ((250/50*5)/2)), digits = 0)
+soilMass[is.na(soilMass$soilOneHand.mg) & soilMass$motherOrChild == "CH" & soilMass$volSample.ml == 200, c("soilOneHand.mg")] <-
+  round(runif(nrow(soilMass[is.na(soilMass$soilOneHand.mg) & soilMass$motherOrChild == "CH" & soilMass$volSample.ml == 200, c("soilOneHand.mg")]), 0, ((250/200*5)/2)), digits = 0)
+soilMass[is.na(soilMass$soilOneHand.mg) & soilMass$motherOrChild == "MH" & soilMass$volSample.ml == 50, c("soilOneHand.mg")] <-
+  round(runif(nrow(soilMass[is.na(soilMass$soilOneHand.mg) & soilMass$motherOrChild == "MH" & soilMass$volSample.ml == 50, c("soilOneHand.mg")]), 0, ((350/50*5)/2)), digits = 0)
+soilMass[is.na(soilMass$soilOneHand.mg) & soilMass$motherOrChild == "MH" & soilMass$volSample.ml == 200, c("soilOneHand.mg")] <-
+  round(runif(nrow(soilMass[is.na(soilMass$soilOneHand.mg) & soilMass$motherOrChild == "MH" & soilMass$volSample.ml == 200, c("soilOneHand.mg")]), 0, ((350/200*5)/2)), digits = 0)
 
-qplot(soilMass$soilOneHand.mg, geom="histogram", binwidth = 1)
+qplot(soilMass[soilMass$motherOrChild == "CH", "soilOneHand.mg"], geom="histogram", binwidth = 1)
+qplot(soilMass[soilMass$motherOrChild == "MH", "soilOneHand.mg"], geom="histogram", binwidth = 1)
 
 soilMass.narrow <- soilMass[,c("hh", "RO1.round", "surveyDate.soil", "motherOrChild", "soilOneHand.mg")]
-
 
 # Separate into mother and child mass
 soilMass.child.Round7 <- soilMass.narrow %>%
