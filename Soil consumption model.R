@@ -538,21 +538,15 @@ vo.9.touch.soil %>%
 # The median (max) number of consecutive soil contacts among children <6 mo was 2 (14), among children 6-12 mo 3 (37), 
 # among children 12-24 mo 2 (59), among children 24-36 mo 1 (17), among children 36-48 mo 1 (3)
 
-### BUT DO NOT ASSUME THAT THE ADHERENCE FACTOR SCALES LINEARALY - RODES 2001 finds that consecutive presses decreased the transfer factor by 3, requiring ~100 presses to reach equilibrium
-# Assume that we took the hand rinse sample when the hand was at pseudo-equilibrium, which Rodes says is reached after ~100 contacts
-# Tim Julian suggests there is a similar equilibrium with rotavirus after 10 min of contacts (and there is approx 33 seconds between each contact so 10 min = 20 contacts)
-c = 0.65
-total = 0
-for(i in 0:36){
-  total = total + sum(c/3^i)
-}
-total
-# Since the drop-off is so quick, the load after 4 contacts is approximately equal to the load after 100 contacts
+### DO NOT ASSUME THAT THE ADHERENCE FACTOR SCALES LINEARALY #####
+# RODES 2001 reports in the abstract that consecutive presses decreased the transfer factor by 3, requiring ~100 presses to reach equilibrium
+# However, what he actually means is that the load on the hand is ~62% after the first contact and ~32% is after 40 contacts. 
+# This does NOT mean there is a decrease in factor of 3 for EACH contact. There is also no support ofr the 100 contacts to reach equilibrium.
 
-# For the median = 0.132, initial contact transfers 0.09, after 4 contacts load = 0.1311, 100 contacts = 0.135
-# For the mean = 0.293, initial contact transfers 0.20 mg/cm2, after 4 contacts load = 0.291, 100 contacts = 0.300
-# For the min = 0.0141, initial contact transfers 0.01 mg/cm2, after 4 contacts load = 0.0145, 100 contacts = 0.015
-# For the max = 0.951, initial contact transfers 0.65 mg/cm2, after 4 contacts load = 0.946, 11 contacts = 0.975, 25 contacts = 0.975, 36 contacts = 0.975, 100 contacts = 0.975, 128 contacts = 0.975
+# The difference in concentration between the surface and the hand drives the transfer, so at some point an equilibrium will be reached. 
+# In in rural Bangladesh (at least outdoors) the dislodgable residue is very, very high.
+# So on the hand we have 0.08 mg/cm2, which we assume is the pseudo-equilibrium, which Rodes says is reached after ~100 contacts (but has not support for this)
+# Tim Julian suggests there is a similar equilibrium with rotavirus after 10 min of contacts (and there is approx 33 seconds between each contact so 10 min = 20 contacts)
 
 # Based on data in Rodes_2001_Figure 5
 dermal.frac.transferred <- data.frame(x = seq(1, 56, 5), y = c(64, 46, 72, 56, 40, 48, 28, 42, 18, 42, 9, 37)) #, rep(NA, 9)
@@ -577,19 +571,13 @@ exp(4.2185 + (-0.02136)*x)
 # After 150 contacts = 2.7
 # After 200 contacts = 0.949
 
+# soil.C.conc.f6 <- soil.C.empirical.36mo.conc * # some scaling which is not linear   # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "3-6 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+# soil.C.conc.6_12 <- soil.C.empirical.36mo.conc * # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "6-12 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+# soil.C.conc.12_24 <- soil.C.empirical.36mo.conc * # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "12-24 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+# soil.C.conc.24_36 <- soil.C.empirical.36mo.conc * # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "24-36 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+# soil.C.conc.36_48 <- soil.C.empirical.36mo.conc
 
-# The difference in concentration between the surface and the hand drives the transfer, so at some point an equilibrium will be reached. 
-# In in rural Bangladesh (at least outdoors) the dislodgable residue is very, very high.
-
-# So on the hand we have 0.08 mg/cm2, which we assume is the long-term equilibrium
-
-
-
-soil.C.conc.f6 <- soil.C.empirical.36mo.conc * as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "3-6 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
-soil.C.conc.6_12 <- soil.C.empirical.36mo.conc * as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "6-12 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
-soil.C.conc.12_24 <- soil.C.empirical.36mo.conc * as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "12-24 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
-soil.C.conc.24_36 <- soil.C.empirical.36mo.conc * as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "24-36 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
-soil.C.conc.36_48 <- soil.C.empirical.36mo.conc
+soil.C.conc <- soil.C.empirical.36mo.conc
 
 soil.M.conc <- soil.M.load.mcstoc / (M.hand.SA.WASHB.mcstoc * runif(ndvar(), 0.23, 0.35)) #M.hand.SA.WASHB.end.mcstoc 
 #soil.M.conc <- soil.M.load.mcdata / M.hand.SA.WASHB.mcstoc #M.hand.SA.WASHB.end.mcstoc 
@@ -733,6 +721,14 @@ find.unif.dist <- function(mcnode){
 # qqcomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
 # ppcomp(list(fitW, fitg, fitln), legendtext=c("Weibull", "gamma", "lognormal"))
 # gofstat(list(fitW, fitg, fitln), fitnames=c("Weibull", "gamma", "lognormal"))
+
+# estBetaParams <- function(mu, var){
+#   alpha <- ((1-mu) / var - (1/mu)) * mu^2
+#   beta <- alpha * (1/ mu-1)
+#   return(params = list(alpha = alpha, beta = beta))
+# }
+# estBetaParams(0.0211, 0.006) # alpha = 0.05154, beta = 2.3909 - this has a min that is close but a max that is too low
+# curve(dbeta(x, 0.05154, 2.3909))
 
 find.lognorm.dist(amt.soil.ingested.mg.day.u6)
 find.lognorm.dist(amt.soil.ingested.mg.day.6_12)
@@ -979,36 +975,69 @@ HM.mom.d.events.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = HM.mom.d.even
 
 
 #################### Combine load_child/load_mom with HM_child/HM_mom with mouth SA dist, removal efficiency dist
-
-#HF	Child own hand fracion mouthed/event	-	day	beta	3.7	25				Zartarian 2005 as presented in Ozkaynak 2011	Zartarian 2005
-HF.child.mcstoc <- mcstoc(rbeta, type="V", shape1 = 3.7, shape2 = 25, rtrunc=TRUE, linf=0)
+# HF	Child own hand fracion mouthed/event	-	day	beta	3.7	25				Zartarian 2005 as presented in Ozkaynak 2011	Zartarian 2005
+# HF.child.mcstoc <- mcstoc(rbeta, type="V", shape1 = 3.7, shape2 = 25, rtrunc=TRUE, linf=0) #mean = 0.129, 
 ##########################################################
-# I can do better than this!! Work to replace this value, which is based only on 20 children. 
+# I've done my own analysis of the data in Leckie 2000 (see "C:/Users/Tareq/Box Sync/VO R123/Hand configurations in mouthing_LK analysis of Leckie 2000.xlsx") 
+# and made the results specific to the 16 children ages 1-4. 
 
+hand.config.pc.time <- read_excel("C:/Users/Tareq/Box Sync/VO R123/Hand configurations in mouthing_LK analysis of Leckie 2000.xlsx", sheet = "hand config pc")
 
+# There was an assumption in the Leckie 2000 Tables 3.5a that there couldn't be Ouside Mouth Contact with the hand, but in fact this was recorded 10% of time time. 
+# This is probably because there was these were supposed to be coded as Partial Palm without Fingers (POF) immersed in the mouth (there's not really a difference in palm on lips and palm in mouth with no fingers)
+# So I need to recode OMC_Hand is POF in the summaries (can't figure out how to do it neatly with the raw data)
+# It also looks like PFF_hand is miscoded. I'll assume that it should have been POF_hand
+hand.config.fixhand <- hand.config.pc.time %>%
+  unite(id.sex.age, id, sex, age) %>%
+  select(id.sex.age, hand.config, hand) %>%
+  spread(hand.config, hand) %>%
+  mutate(POF = POF + OMC, POF = POF + PFF, OMC = 0, PFF = 0) %>%
+  gather(hand.config, hand, -id.sex.age) %>%
+  separate(id.sex.age, c("id", "sex", "age")) %>%
+  mutate(age = as.numeric(age), id = as.numeric(id))
 
+hand.config.time <- hand.config.pc.time %>%
+  select(-hand) %>%
+  left_join(hand.config.fixhand, by = c("id", "sex", "age", "hand.config")) %>%
+  unite(id.sex.age, id, sex, age) %>%
+  gather(finger.config, frac.time, -hand.config,  -id.sex.age) #gather(name of new first col that will have the col names in rows, name of new second col that will store the values that were in the cols that got gathered, - names of cols that you want to keep as cols)
 
+hand.config.pc.SA <- read_excel("C:/Users/Tareq/Box Sync/VO R123/Hand configurations in mouthing_LK analysis of Leckie 2000.xlsx", sheet = "hand config SA")
+hand.config.pc.SA <- hand.config.pc.SA[12:16, 1:7] 
+hand.config.SA <- hand.config.pc.SA %>%
+  gather(finger.config, frac.hand, -hand.config) %>%
+  mutate(frac.hand = as.numeric(frac.hand)) %>%
+  replace(is.na(.), 0)
 
+hand.config.time.SA <- left_join(hand.config.time, hand.config.SA, by = c("hand.config", "finger.config")) %>%
+  separate(id.sex.age, c("id", "sex", "age"))
 
+# oral contacts (immersion contacts) hand.config == PFF, FFF, POF, or PWF
+hand.config.time.SA.oral <- hand.config.time.SA %>%
+  filter(age < 5, hand.config != "OMC") # include ages 1-4 only
+#boostrap
+hand.config.time.SA.oral.frac.hand.boot <- sample(as.numeric(unlist(hand.config.time.SA.oral[,"frac.hand"])), size=1000, replace=TRUE, prob = prop.table(as.numeric(unlist(hand.config.time.SA.oral[,"frac.time"])))) # The prop.table expresses table entries as fraction of marginal table =  hand.config.time.SA.oral$frac.time/sum(hand.config.time.SA.oral$frac.time)
+summary(hand.config.time.SA.oral.frac.hand.boot)
+HF.child.oral.mcstoc <- mcstoc(rempiricalD, values = hand.config.time.SA.oral.frac.hand.boot, type="V", nsv = ndvar())
 
+# peri-oral contacts (contacts with the lips) hand.config == Outside of Mouth
+hand.config.time.SA.perioral <- hand.config.time.SA %>%
+  filter(age < 5, hand.config == "OMC") # include ages 1-4 only
+#boostrap
+hand.config.time.SA.perioral.frac.hand.boot <- sample(as.numeric(unlist(hand.config.time.SA.perioral[,"frac.hand"])), size=1000, replace=TRUE, prob = prop.table(as.numeric(unlist(hand.config.time.SA.perioral[,"frac.time"])))) # The prop.table expresses table entries as fraction of marginal table =  hand.config.time.SA.oral$frac.time/sum(hand.config.time.SA.oral$frac.time)
+summary(hand.config.time.SA.perioral.frac.hand.boot)
+HF.child.perioral.mcstoc <- mcstoc(rempiricalD, values = hand.config.time.SA.perioral.frac.hand.boot, type="V", nsv = ndvar())
 
+# What percent of contacts are peri-oral = Outside of mouth contacts (OMC)
+hand.config.time.SA %>%
+  filter(age < 5, hand.config == "OMC") %>% #filter(hand.finger.config %in% c("OMC_1.fingers", "OMC_2.fingers", "OMC_3.fingers", "OMC_4.fingers", "OMC_5.fingers", "OMC_hand")) %>%
+  group_by(id) %>%
+  summarise(OMC.frac.time = sum(frac.time)) %>%
+  ungroup() %>%
+  summarise(OMC.frac.time.mean = mean(OMC.frac.time), OMC.frac.time.sd = sd(OMC.frac.time))
+# 50.3% of contacts are peri-oral!!! Thes observations included eating events so can't say eating is 100% oral, must also say that it is 53% perioral
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+############### Hand fraction of MOTHER's hand that goes into the child's mouth ##########
 
 # Children will mouth a smaller portion of mom's hand than of own hand 
 # Children are "mouth-limited" in how much surface area they can put in their mouth. 
@@ -1018,16 +1047,19 @@ HF.child.mcstoc <- mcstoc(rbeta, type="V", shape1 = 3.7, shape2 = 25, rtrunc=TRU
 ## Use age groups rather than age by month. There aren't very many observations for children of specific months, 
 ## and some kids who weren't observed may have been a bit bigger or smaller so seems okay to include the entire age group
 ## Could change this so XX is by age group, not by month....This is better because below I change it into age groups anyway...
-C.hand.SA.WASHB.inMouth.f6.mcstoc <- C.hand.SA.WASHB.f6.mcstoc * HF.child.mcstoc # mean 12.3, med 11.4, min 0.373, max 50.5
-C.hand.SA.WASHB.inMouth.6_12.mcstoc <- C.hand.SA.WASHB.6_12.mcstoc * HF.child.mcstoc # mean 13.4, med 12.4, min 0.236, max 58.5
-C.hand.SA.WASHB.inMouth.12_24.mcstoc <- C.hand.SA.WASHB.12_24.mcstoc * HF.child.mcstoc # mean 16.2, med 15.0, min 0.278, max 65.6
-C.hand.SA.WASHB.inMouth.24_36.mcstoc <- C.hand.SA.WASHB.24_36.mcstoc * HF.child.mcstoc # mean 17.5, med 16.2, min 0.304, max 67.7
+## Use the hand fraction for oral because the child to mother contacts are mostly immersion (for feeding). There are a few non-dietary contacts, but I'm not going to worry about those
+C.hand.SA.WASHB.inMouth.f6.mcstoc <- C.hand.SA.WASHB.f6.mcstoc * HF.child.oral.mcstoc # mean 17.2, med 16.9, min 5.63, max 56.7
+C.hand.SA.WASHB.inMouth.6_12.mcstoc <- C.hand.SA.WASHB.6_12.mcstoc * HF.child.oral.mcstoc # mean 19.5, med 18.9, min 5.32, max 80.1
+C.hand.SA.WASHB.inMouth.12_24.mcstoc <- C.hand.SA.WASHB.12_24.mcstoc * HF.child.oral.mcstoc # mean 23.8, med 23.5, min 6.6, max 96.2
+C.hand.SA.WASHB.inMouth.24_36.mcstoc <- C.hand.SA.WASHB.24_36.mcstoc * HF.child.oral.mcstoc # mean 25, med 24, min 7.69, max 85.8
+#C.hand.SA.WASHB.inMouth.36_48.mcstoc <- C.hand.SA.WASHB.36_48.mcstoc * HF.child.oral.mcstoc 
 
 # HF.ofmom.xx <- C.hand.SA.WASHB.inMouth.xx.mcstoc / median(M.hand.SA.WASHB.mcstoc)
 HF.ofmom.f6 <- C.hand.SA.WASHB.inMouth.f6.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 3 = <6 mo
 HF.ofmom.6_12 <- C.hand.SA.WASHB.inMouth.6_12.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 = 6-12 mo
 HF.ofmom.12_24 <- C.hand.SA.WASHB.inMouth.12_24.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 5 = 12_24 mo
-HF.ofmom.24_36 <- C.hand.SA.WASHB.inMouth.24_36.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 6 = 12_36 mo
+HF.ofmom.24_36 <- C.hand.SA.WASHB.inMouth.24_36.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 6 = 24_36 mo
+#HF.ofmom.36_48 <- C.hand.SA.WASHB.inMouth.36_48.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 7 = 36_48 mo
 
 ## Don't use months because there isn't enough data for some of the months
 
@@ -1035,13 +1067,11 @@ HF.ofmom.24_36 <- C.hand.SA.WASHB.inMouth.24_36.mcstoc / median(M.hand.SA.WASHB.
 ####################### SEE Saliva extraction efficiency  = HMRE	Hand mouthing removal = transfer efficiency #######################
 
 # For the many reasons listed in my soil paper, I will NOT use ths Ozkaynak 2011 HMRE per	day	beta	2	8			
-# we estimated a triangular distribution with a lower bound of 24%, mode of 75%, and upper bound of 100% with the beta distribution using maximum likelihood estimation. The resulting distribution, beta(5.1, 2.6), has a 5th percentile of 38.1%, median of 68.2%, and a 95th percentile of 90.1%. 
+# we estimated a triangular distribution with a lower bound of 24%, mode of 75%, and upper bound of 100% with the beta distribution using maximum likelihood estimation. 
 fitdist(rtriangle(100000, 0.24, 0.75, (0.24+0.75)/2), "beta", method = "mle") # For a triangular dist, the values must be 0-1
 hist(rbeta(10000, shape1 = 11.02, shape2 = 11.24))
+summary(beta(shape1 = 11.02, shape2 = 11.24))
 SEE.mcstoc <- mcstoc(rbeta, type="V", shape1 = 11.02, shape2 = 11.24, rtrunc=TRUE, linf=0)
-
-
-
 
 #####################################################################################
 #####################################################################################
