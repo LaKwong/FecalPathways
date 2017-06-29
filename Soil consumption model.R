@@ -31,6 +31,7 @@
 #### To replace na using dplyr! ######333
 # df %>% replace(is.na(.), 0)
 
+## For a triangular distribution triangle(a,b, c = (a+b)/2), this is the DEAFAULT for c, but I can set c to whatever the actual mode is!
 
 ### Always calculate for ONE hand
 library(readxl)
@@ -174,7 +175,25 @@ soilMass.wide <- soilMass.wide[, c("hh", "surveyDate.soil.child.7", "soilOneHand
 ## Instead of finding a dist for load on hands and then a dist for surface area of hands and dividing these dist to get concentration, 
 ## use empirical load divided by modeled hand SA based on age = concentration and then find the dist of that concentration   ################
 #soil.C.load <- soilMass.wide[, c("hh", "child.hand.SA.age.soil.7", "soilOneHand.mg.child.7", "child.hand.SA.age.soil.7", "soilMass.wide$soilOneHand.mg.child.8")]
-soil.C.load <- soilMass.wide[, c("hh", "soilOneHand.mg.child.7", "soilOneHand.mg.child.8")]
+
+# maybe use the code below
+#soil.C.load <- soilMass.wide[, c("hh", "soilOneHand.mg.child.7", "soilOneHand.mg.child.8")]
+
+soil.C.load <- data.frame(combine(soilMass.wide$soilOneHand.mg.child.7, soilMass.wide$soilOneHand.mg.child.8))
+names(soil.C.load) <- "soilOneHand.mg.child"
+soil.C.load <- soil.C.load[!is.na(soil.C.load$soilOneHand.mg.child),]
+
+length(soil.C.load) #129
+summary(soil.C.load)
+#      Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+#   0.000   4.375  10.000  12.680  17.500 132.500    6737
+
+qplot(soil.C.load, geom = "histogram", binwidth = 1)
+
+# ### No distribution fits so instead I'll draw from the empirical data
+# soil.C.load.dist <- fitdist(soil.C.load, "lnorm", method = "mle")
+
+soil.C.load.mcstoc <- mcstoc(rempiricalD, values = soil.C.load, type="V", nsv = ndvar()) # I think this does the same thing as sample(soil.C.load, size=ndvar(), replace=TRUE)
 
 # ### Measured soil load on children's hands
 # soil.C.load <- data.frame(combine(soilMass.wide$soilOneHand.mg.child.7, soilMass.wide$soilOneHand.mg.child.8))
@@ -198,7 +217,7 @@ soil.C.load <- soilMass.wide[, c("hh", "soilOneHand.mg.child.7", "soilOneHand.mg
 # 
 # print(p0)
 
-### Measured soil load on mom's hands
+############# Measured soil load on mom's hands ################
 soil.M.load <- data.frame(combine(soilMass.wide$soilOneHand.mg.mom.7, soilMass.wide$soilOneHand.mg.mom.8))
 names(soil.M.load) <- "soilOneHand.mg.mom"
 soil.M.load <- soil.M.load[!is.na(soil.M.load$soilOneHand.mg.mom),]
@@ -216,11 +235,10 @@ qplot(soil.M.load, geom = "histogram", binwidth = 1)
 soil.M.load.mcstoc <- mcstoc(rempiricalD, values = soil.M.load, type="V", nsv = ndvar()) # I think this does the same thing as sample(soil.M.load, size=ndvar(), replace=TRUE)
 # I think I can't make a continuous function out of this because it doesn't fit into a distribution
 # soil.M.load.mcdata <- mcstoc(rempiricalC(n = ndvar(), min = min(soil.M.load), max = max(soil.M.load), values = soil.M.load), type="V")
-#soil.M.load.mcdata <- mcdata(sample(soil.M.load, size=ndvar(), replace=TRUE),type="V")
+# soil.M.load.mcdata <- mcdata(sample(soil.M.load, size=ndvar(), replace=TRUE),type="V")
 
-
-###################################################################
-###################################################################
+######################################################################################################################################
+######################################################################################################################################
 
 ######## Det the Hand SA of the children and mother's at the time they gave the hand rinse sample for soil ###########
 
@@ -237,8 +255,6 @@ soil.M.load.mcstoc <- mcstoc(rempiricalD, values = soil.M.load, type="V", nsv = 
 #anth.soil.wide <- read.csv("C:/Users/Tareq/Box Sync/VO Fecal Intake Model/anth.soil.wide.csv")
 anth.soil.wide <- read.csv("C:/Users/Tareq/Box Sync/VO Fecal Intake Model/anth.soil.wide_const_HandSAratio.csv")
 
-
-
 anth.soil.wide <- anth.soil.wide %>%
   #filter(arm %in% c ("Control"))
   filter(arm %in% c ("Control", "Sanitation", "Handwashing", "Water", "WSH")) 
@@ -253,10 +269,6 @@ write.csv(missingWASHBdata, "C:/Users/Tareq/Box Sync/VO Soil/Mass of soil on chi
 allsoilsamplehh <- unique(soilMass.wide$hh)
 write.csv(allsoilsamplehh, "C:/Users/Tareq/Box Sync/VO Soil/Mass of soil on children's hands/all soil sample hh.csv")
 
-
-
-
-
 anth.soilMass.wide <- left_join(anth.soil.wide, soilMass.wide, by = "hh")
 # The dates had the correct format when saved but the format was not imported so need to change from factor to date
 anth.soilMass.wide$unique_dob <- ymd(anth.soilMass.wide$unique_dob)
@@ -264,14 +276,12 @@ anth.soilMass.wide$surveyDate.mid <- ymd(anth.soilMass.wide$surveyDate.mid)
 anth.soilMass.wide$surveyDate.end <- ymd(anth.soilMass.wide$surveyDate.end)
 
 length(unique(anth.soil.wide$hh)) #3314 hh in the ("Control", "Sanitation", "Handwashing", "Water", "WSH") arms
-sd(anth.soil.wide$survey.age.mo.mid, na.rm = TRUE)
-sd(anth.soil.wide$survey.age.mo.end, na.rm = TRUE)
+mean(anth.soil.wide$survey.age.mo.mid, na.rm = TRUE) # At midline, the children were 8.8 mo old
+mean(anth.soil.wide$survey.age.mo.end, na.rm = TRUE) # At endline, the children were 22.5 mo old
 
-# # The code below shows that the kids who's hand we sampled are WAY older than the kids in WASHB, 
-# # so can't use the WASHB anthro data to est g/cm2
-# 
-anth.soilMass.wide$age.soil.child.7 <- (anth.soilMass.wide$surveyDate.soil.child.7 - anth.soilMass.wide$unique_dob) / 365 * 12
-anth.soilMass.wide$age.soil.child.8 <- (anth.soilMass.wide$surveyDate.soil.child.8 - anth.soilMass.wide$unique_dob) / 365 * 12
+# The code below shows that the kids who's hand we sampled are WAY older than the kids in WASHB, so can't use the WASHB anthro data to est g/cm2
+anth.soilMass.wide$age.soil.child.7 <- as.numeric((anth.soilMass.wide$surveyDate.soil.child.7 - anth.soilMass.wide$unique_dob) / 365 * 12)
+anth.soilMass.wide$age.soil.child.8 <- as.numeric((anth.soilMass.wide$surveyDate.soil.child.8 - anth.soilMass.wide$unique_dob) / 365 * 12)
 # anth.soilMass.wide$round7DaysFromEnd <- anth.soilMass.wide$surveyDate.soil.child.7 - anth.soilMass.wide$surveyDate.end # at the time the soil round 7 sample was collected, children were 360 year older than the were at WASHB endline 
 # anth.soilMass.wide$round8DaysFromEnd <- anth.soilMass.wide$surveyDate.soil.child.8 - anth.soilMass.wide$surveyDate.end# at the time the soil round 8 sample was collected, children were 460 year older than the were at WASHB endline 
 # 
@@ -340,9 +350,6 @@ ggplot(data = C.hand.SA.WASHB,
   theme(legend.position="none") +
   labs(x="Child age (months)", y="Surface Area (cm2)") 
 
-anth.soilMass.wide$age.soil.child.7 <- as.numeric(anth.soilMass.wide$age.soil.child.7)
-anth.soilMass.wide$age.soil.child.8 <- as.numeric(anth.soilMass.wide$age.soil.child.8)
-
 anth.soilMass.wide$child.hand.SA.age.soil.7 <- predict(lm(C.hand.SA~age.mo, data = C.hand.SA.WASHB), newdata = data.frame(age.mo = anth.soilMass.wide$age.soil.child.7))
 anth.soilMass.wide$child.hand.SA.age.soil.8 <- predict(lm(C.hand.SA~age.mo, data = C.hand.SA.WASHB), newdata = data.frame(age.mo = anth.soilMass.wide$age.soil.child.8))
 
@@ -355,11 +362,7 @@ qplot(C.hand.SA$C.hand.SA, geom = "histogram", binwidth = 1)
 # # 6 to < 12 mo	0.51	5.3	0.02703	270.3	0.024	0.027	120	135 - ONE HAND mean 120, 95th pc 135 - my children are WAY smaller 
 
 
-summary(c(anth.soilMass.wide$age.soil.child.7, anth.soilMass.wide$age.soil.child.8), na.rm = TRUE)
-#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-#   32.02   35.31   36.82   36.82   38.30   41.72    6737 
-
-############### To get the mother hand SA of the appropriate-age children, 
+############### To get the mother hand SA of the appropriate-age children ############################# 
 # # could use the hand SA distribution for WASHB mothers at endline
 # anth.M.hand.SA.WASHB.end <- anth.soilMass.wide %>%
 #   select(M.hand.SA.end) %>%
@@ -420,18 +423,19 @@ anth.soilMass.wide <- anth.soilMass.wide %>%
 soil.C.conc.long <- data.frame(combine(anth.soilMass.wide$soil.C.conc.7, anth.soilMass.wide$soil.C.conc.8))
 names(soil.C.conc.long) <- "soil.C.conc"
 
-
 length(soil.C.conc.long) #68 observations
 summary(soil.C.conc.long$soil.C.conc) 
-# MassDEP uses 1.5 mg/cm2 as conservative; lowest mentioned in Finley is Duggan 1985 with 0.12 mg/cm2 - mine are even lower than this!
+## Good this makes sense! Comparable to construction workers, utility workers, and equipment operators in Holmes_1999 and farmers in Kissel_1995
+# MassDEP uses 1.5 mg/cm2 as conservative; lowest mentioned in Finley is Duggan 1985 with 0.12 mg/cm2 - mine are lower than this if divide by the ENTIRE SA of the hand, but this isn't what they do in their papers, they only divide by the CONTAMINATED surface area of the hands, which they assume is around 80%
 #     Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-# 0.00000 0.08089 0.20240 0.29570 0.41790 3.53500       3
+#   0.000   0.107   0.235   0.306   0.394   3.462    6737
 
 soil.C.empirical.36mo.conc <- mcstoc(rempiricalD, values = soil.C.conc.long$soil.C.conc, type="V", nsv = ndvar())
 #soil.C.conc <- mcdata(sample(soil.C.conc.long$soil.C.conc, size=ndvar(), replace=TRUE),type="V")
 
-##################################################################################################
+#######################################################################################################
  ### Figure out the soil adherence for younger children, who contact the soil more frequently ######
+#######################################################################################################
 
 # If we want to base it on the weibull distribution:
 # load frequency of soil contacts
@@ -548,34 +552,34 @@ vo.9.touch.soil %>%
 # So on the hand we have 0.08 mg/cm2, which we assume is the pseudo-equilibrium, which Rodes says is reached after ~100 contacts (but has not support for this)
 # Tim Julian suggests there is a similar equilibrium with rotavirus after 10 min of contacts (and there is approx 33 seconds between each contact so 10 min = 20 contacts)
 
-# Based on data in Rodes_2001_Figure 5
-dermal.frac.transferred <- data.frame(x = seq(1, 56, 5), y = c(64, 46, 72, 56, 40, 48, 28, 42, 18, 42, 9, 37)) #, rep(NA, 9)
-model <- lm(log(dermal.frac.transferred$y) ~ dermal.frac.transferred$x)
-plot(dermal.frac.transferred$x, dermal.frac.transferred$y, type = "p", lwd = 3)
-lines(dermal.frac.transferred$x, exp(model$fit), col = "red")
-x = 3
-exp(4.2185 + (-0.02136)*x)
-# After 1 contacts = 66.5
-# After 2 contacts = 65.1
-# After 3 contacts = 63.7
-# After 100 contacts = 8.04
-# After 130 contacts = 4.23
-# After 150 contacts = 2.7
-# After 200 contacts = 0.949
-
-# with three additional datapoints that Rodes made up in order to get things to level off:
-# dermal.frac.transferred <- data.frame(x = seq(1, 71, 5), y = c(64, 46, 72, 56, 40, 48, 28, 42, 18, 42, 9, 37, 24, 22, 20)) #, rep(NA, 9)
-# result in the equation: exp(4.14 + (-0.01779)*x)
-# After 100 contacts = 8.04
-# After 130 contacts = 4.23
-# After 150 contacts = 2.7
-# After 200 contacts = 0.949
-
-# soil.C.conc.f6 <- soil.C.empirical.36mo.conc * # some scaling which is not linear   # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "3-6 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
-# soil.C.conc.6_12 <- soil.C.empirical.36mo.conc * # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "6-12 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
-# soil.C.conc.12_24 <- soil.C.empirical.36mo.conc * # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "12-24 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
-# soil.C.conc.24_36 <- soil.C.empirical.36mo.conc * # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "24-36 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
-# soil.C.conc.36_48 <- soil.C.empirical.36mo.conc
+# # Based on data in Rodes_2001_Figure 5
+# dermal.frac.transferred <- data.frame(x = seq(1, 56, 5), y = c(64, 46, 72, 56, 40, 48, 28, 42, 18, 42, 9, 37)) #, rep(NA, 9)
+# model <- lm(log(dermal.frac.transferred$y) ~ dermal.frac.transferred$x)
+# plot(dermal.frac.transferred$x, dermal.frac.transferred$y, type = "p", lwd = 3)
+# lines(dermal.frac.transferred$x, exp(model$fit), col = "red")
+# x = 3
+# exp(4.2185 + (-0.02136)*x)
+# # After 1 contacts = 66.5
+# # After 2 contacts = 65.1
+# # After 3 contacts = 63.7
+# # After 100 contacts = 8.04
+# # After 130 contacts = 4.23
+# # After 150 contacts = 2.7
+# # After 200 contacts = 0.949
+# 
+# # with three additional datapoints that Rodes made up in order to get things to level off:
+# # dermal.frac.transferred <- data.frame(x = seq(1, 71, 5), y = c(64, 46, 72, 56, 40, 48, 28, 42, 18, 42, 9, 37, 24, 22, 20)) #, rep(NA, 9)
+# # result in the equation: exp(4.14 + (-0.01779)*x)
+# # After 100 contacts = 8.04
+# # After 130 contacts = 4.23
+# # After 150 contacts = 2.7
+# # After 200 contacts = 0.949
+# 
+# # soil.C.conc.f6 <- soil.C.empirical.36mo.conc * # some scaling which is not linear   # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "3-6 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+# # soil.C.conc.6_12 <- soil.C.empirical.36mo.conc * # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "6-12 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+# # soil.C.conc.12_24 <- soil.C.empirical.36mo.conc * # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "12-24 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+# # soil.C.conc.24_36 <- soil.C.empirical.36mo.conc * # as.numeric(vo.11.objclass.summary[vo.11.objclass.summary$age.group == "24-36 months", "freq.med"]/vo.11.objclass.summary[vo.11.objclass.summary$age.group == "36-48 months", "freq.med"])
+# # soil.C.conc.36_48 <- soil.C.empirical.36mo.conc
 
 soil.C.conc <- soil.C.empirical.36mo.conc
 
@@ -974,7 +978,7 @@ HM.mom.d.events.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = HM.mom.d.even
 
 
 
-#################### Combine load_child/load_mom with HM_child/HM_mom with mouth SA dist, removal efficiency dist
+############## Calc the fraction of the child's hand that enters the mouth on any given contact ###########
 # HF	Child own hand fracion mouthed/event	-	day	beta	3.7	25				Zartarian 2005 as presented in Ozkaynak 2011	Zartarian 2005
 # HF.child.mcstoc <- mcstoc(rbeta, type="V", shape1 = 3.7, shape2 = 25, rtrunc=TRUE, linf=0) #mean = 0.129, 
 ##########################################################
@@ -1016,7 +1020,7 @@ hand.config.time.SA <- left_join(hand.config.time, hand.config.SA, by = c("hand.
 hand.config.time.SA.oral <- hand.config.time.SA %>%
   filter(age < 5, hand.config != "OMC") # include ages 1-4 only
 #boostrap
-hand.config.time.SA.oral.frac.hand.boot <- sample(as.numeric(unlist(hand.config.time.SA.oral[,"frac.hand"])), size=1000, replace=TRUE, prob = prop.table(as.numeric(unlist(hand.config.time.SA.oral[,"frac.time"])))) # The prop.table expresses table entries as fraction of marginal table =  hand.config.time.SA.oral$frac.time/sum(hand.config.time.SA.oral$frac.time)
+hand.config.time.SA.oral.frac.hand.boot <- sample(as.numeric(unlist(hand.config.time.SA.oral[,"frac.hand"])), size=1000, replace=TRUE, prob = as.numeric(unlist(hand.config.time.SA.oral[,"frac.time"]))) # Don't need prop.table because I already have the marginal fractions listed in frac.time: prop.table(as.numeric(unlist(hand.config.time.SA.oral[,"frac.time"]))) The prop.table expresses table entries as fraction of marginal table =  hand.config.time.SA.oral$frac.time/sum(hand.config.time.SA.oral$frac.time)
 summary(hand.config.time.SA.oral.frac.hand.boot)
 HF.child.oral.mcstoc <- mcstoc(rempiricalD, values = hand.config.time.SA.oral.frac.hand.boot, type="V", nsv = ndvar())
 
@@ -1024,18 +1028,9 @@ HF.child.oral.mcstoc <- mcstoc(rempiricalD, values = hand.config.time.SA.oral.fr
 hand.config.time.SA.perioral <- hand.config.time.SA %>%
   filter(age < 5, hand.config == "OMC") # include ages 1-4 only
 #boostrap
-hand.config.time.SA.perioral.frac.hand.boot <- sample(as.numeric(unlist(hand.config.time.SA.perioral[,"frac.hand"])), size=1000, replace=TRUE, prob = prop.table(as.numeric(unlist(hand.config.time.SA.perioral[,"frac.time"])))) # The prop.table expresses table entries as fraction of marginal table =  hand.config.time.SA.oral$frac.time/sum(hand.config.time.SA.oral$frac.time)
+hand.config.time.SA.perioral.frac.hand.boot <- sample(as.numeric(unlist(hand.config.time.SA.perioral[,"frac.hand"])), size=1000, replace=TRUE, prob = as.numeric(unlist(hand.config.time.SA.perioral[,"frac.time"]))) # Don't need prop.table because I already have the marginal prob in frac.time: prop.table(as.numeric(unlist(hand.config.time.SA.perioral[,"frac.time"]))) The prop.table expresses table entries as fraction of marginal table =  hand.config.time.SA.oral$frac.time/sum(hand.config.time.SA.oral$frac.time)
 summary(hand.config.time.SA.perioral.frac.hand.boot)
 HF.child.perioral.mcstoc <- mcstoc(rempiricalD, values = hand.config.time.SA.perioral.frac.hand.boot, type="V", nsv = ndvar())
-
-# What percent of contacts are peri-oral = Outside of mouth contacts (OMC)
-hand.config.time.SA %>%
-  filter(age < 5, hand.config == "OMC") %>% #filter(hand.finger.config %in% c("OMC_1.fingers", "OMC_2.fingers", "OMC_3.fingers", "OMC_4.fingers", "OMC_5.fingers", "OMC_hand")) %>%
-  group_by(id) %>%
-  summarise(OMC.frac.time = sum(frac.time)) %>%
-  ungroup() %>%
-  summarise(OMC.frac.time.mean = mean(OMC.frac.time), OMC.frac.time.sd = sd(OMC.frac.time))
-# 50.3% of contacts are peri-oral!!! Thes observations included eating events so can't say eating is 100% oral, must also say that it is 53% perioral
 
 ############### Hand fraction of MOTHER's hand that goes into the child's mouth ##########
 
@@ -1055,23 +1050,83 @@ C.hand.SA.WASHB.inMouth.24_36.mcstoc <- C.hand.SA.WASHB.24_36.mcstoc * HF.child.
 #C.hand.SA.WASHB.inMouth.36_48.mcstoc <- C.hand.SA.WASHB.36_48.mcstoc * HF.child.oral.mcstoc 
 
 # HF.ofmom.xx <- C.hand.SA.WASHB.inMouth.xx.mcstoc / median(M.hand.SA.WASHB.mcstoc)
-HF.ofmom.f6 <- C.hand.SA.WASHB.inMouth.f6.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 3 = <6 mo
-HF.ofmom.6_12 <- C.hand.SA.WASHB.inMouth.6_12.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 = 6-12 mo
-HF.ofmom.12_24 <- C.hand.SA.WASHB.inMouth.12_24.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 5 = 12_24 mo
-HF.ofmom.24_36 <- C.hand.SA.WASHB.inMouth.24_36.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 6 = 24_36 mo
+HF.ofmom.oral.f6 <- C.hand.SA.WASHB.inMouth.f6.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 3 = <6 mo
+HF.ofmom.oral.6_12 <- C.hand.SA.WASHB.inMouth.6_12.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 4 = 6-12 mo
+HF.ofmom.oral.12_24 <- C.hand.SA.WASHB.inMouth.12_24.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 5 = 12_24 mo
+HF.ofmom.oral.24_36 <- C.hand.SA.WASHB.inMouth.24_36.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 6 = 24_36 mo
 #HF.ofmom.36_48 <- C.hand.SA.WASHB.inMouth.36_48.mcstoc / median(M.hand.SA.WASHB.mcstoc) # use for age.group = 7 = 36_48 mo
 
 ## Don't use months because there isn't enough data for some of the months
 
 
-####################### SEE Saliva extraction efficiency  = HMRE	Hand mouthing removal = transfer efficiency #######################
+############# Calc the number of peri-oral vs oral contacts ######
+# What percent of contacts are peri-oral = Outside of mouth contacts (OMC)
+# Note that this is data from only 14 children, who had 5 to 14 hand-to-mouth contacts during the observation - this is something like 30 min of data only!
+# There were 2 kids that had 100% outside mouth contacts, but they had only 6 and 13 contacts total - is it really reasonable to use this data to make evaluations? 
+# What better data do I have? As Leckie says, this is better than nothing. There is still quite a good range - from 0.11 to 1.0 
+OMC.frac.time <- hand.config.time.SA %>%
+  filter(age < 5, hand.config == "OMC") %>% #filter(hand.finger.config %in% c("OMC_1.fingers", "OMC_2.fingers", "OMC_3.fingers", "OMC_4.fingers", "OMC_5.fingers", "OMC_hand")) %>%
+  group_by(id) %>%
+  summarise(OMC.frac.time = sum(frac.time)) #%>%
+  # ungroup() %>%
+  # summarise(OMC.frac.time.mean = mean(OMC.frac.time), OMC.frac.time.sd = sd(OMC.frac.time))
+# 50.3% of contacts are peri-oral!!! Thes observations included eating events so can't say eating is 100% oral, must also say that it is 53% perioral
+
+# Since there are so few data points, the mean and med can change a lot from sample to sample. Sample once and stick with that. 
+OMC.frac.time.boot <- sample(OMC.frac.time$OMC.frac.time, size = 1000, replace = TRUE)
+perioral.frac.mcstoc <- mcstoc(rempiricalD, values = OMC.frac.time.boot, type="V", nsv = ndvar())
+
+HM.child.f6.perioral.mcstoc <- HM.child.f6.mcstoc * perioral.frac.mcstoc
+HM.mom.nd.f6.perioral.mcstoc <- HM.mom.nd.f6.mcstoc * perioral.frac.mcstoc
+HM.mom.d.events.f6.perioral.mcstoc <- HM.mom.d.events.f6.mcstoc * perioral.frac.mcstoc
+HM.child.6_12.perioral.mcstoc <- HM.child.6_12.mcstoc * perioral.frac.mcstoc
+HM.mom.nd.6_12.perioral.mcstoc <- HM.mom.nd.6_12.mcstoc * perioral.frac.mcstoc
+HM.mom.d.events.6_12.perioral.mcstoc <- HM.mom.d.events.6_12.mcstoc * perioral.frac.mcstoc
+HM.child.12_24.perioral.mcstoc <- HM.child.12_24.mcstoc * perioral.frac.mcstoc
+HM.mom.nd.12_24.perioral.mcstoc <- HM.mom.nd.12_24.mcstoc * perioral.frac.mcstoc
+HM.mom.d.events.12_24.perioral.mcstoc <- HM.mom.d.events.12_24.mcstoc * perioral.frac.mcstoc
+HM.child.24_36.perioral.mcstoc <- HM.child.24_36.mcstoc * perioral.frac.mcstoc
+HM.mom.nd.24_36.perioral.mcstoc <- HM.mom.nd.24_36.mcstoc * perioral.frac.mcstoc
+HM.mom.d.events.24_36.perioral.mcstoc <- HM.mom.d.events.24_36.mcstoc * perioral.frac.mcstoc
+HM.child.36_48.perioral.mcstoc <- HM.child.36_48.mcstoc * perioral.frac.mcstoc
+HM.mom.nd.36_48.perioral.mcstoc <- HM.mom.nd.36_48.mcstoc * perioral.frac.mcstoc
+HM.mom.d.events.36_48.perioral.mcstoc <- HM.mom.d.events.36_48.mcstoc * perioral.frac.mcstoc
+
+HM.child.f6.oral.mcstoc <- HM.child.f6.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.nd.f6.oral.mcstoc <- HM.mom.nd.f6.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.d.events.f6.oral.mcstoc <- HM.mom.d.events.f6.mcstoc * (1-perioral.frac.mcstoc)
+HM.child.6_12.oral.mcstoc <- HM.child.6_12.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.nd.6_12.oral.mcstoc <- HM.mom.nd.6_12.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.d.events.6_12.oral.mcstoc <- HM.mom.d.events.6_12.mcstoc * (1-perioral.frac.mcstoc)
+HM.child.12_24.oral.mcstoc <- HM.child.12_24.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.nd.12_24.oral.mcstoc <- HM.mom.nd.12_24.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.d.events.12_24.oral.mcstoc <- HM.mom.d.events.12_24.mcstoc * (1-perioral.frac.mcstoc)
+HM.child.24_36.oral.mcstoc <- HM.child.24_36.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.nd.24_36.oral.mcstoc <- HM.mom.nd.24_36.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.d.events.24_36.oral.mcstoc <- HM.mom.d.events.24_36.mcstoc * (1-perioral.frac.mcstoc)
+HM.child.36_48.oral.mcstoc <- HM.child.36_48.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.nd.36_48.oral.mcstoc <- HM.mom.nd.36_48.mcstoc * (1-perioral.frac.mcstoc)
+HM.mom.d.events.36_48.oral.mcstoc <- HM.mom.d.events.36_48.mcstoc * (1-perioral.frac.mcstoc)
+
+################## SEE Saliva extraction efficiency  = HMRE	Hand mouthing removal = transfer efficiency #######################
 
 # For the many reasons listed in my soil paper, I will NOT use ths Ozkaynak 2011 HMRE per	day	beta	2	8			
 # we estimated a triangular distribution with a lower bound of 24%, mode of 75%, and upper bound of 100% with the beta distribution using maximum likelihood estimation. 
-fitdist(rtriangle(100000, 0.24, 0.75, (0.24+0.75)/2), "beta", method = "mle") # For a triangular dist, the values must be 0-1
-hist(rbeta(10000, shape1 = 11.02, shape2 = 11.24))
-summary(beta(shape1 = 11.02, shape2 = 11.24))
-SEE.mcstoc <- mcstoc(rbeta, type="V", shape1 = 11.02, shape2 = 11.24, rtrunc=TRUE, linf=0)
+fitdist(rtriangle(100000, 0.24, 1.00, 0.75), "beta", method = "mle") # For a triangular dist, the values must be 0-1
+hist(rbeta(10000, shape1 = 5.2, shape2 = 2.6)) #shape1 = 5.18, shape2 = 2.616
+summary(rbeta(1000, 5.2, 2.6))
+SEE.mcstoc <- mcstoc(rbeta, type="V", shape1 = 5.2, shape2 = 2.6, rtrunc=TRUE, linf=0)
+
+################## HLM Hand-to-lip-to-mouth transfer efficiency #############
+# Data from the Institute for Occupational Medicine_Inadvertent ingestion in the workplace shows tthat the transfer efficiency from 
+# hand to peri-oral is 37% (90th percentile 91%) and from peri-oral to oral is 38% (90th percentile 82%) (much lower than the SEE of 61%, which seems strange - maybe because a lot gets stuck in the grooves of the lips?)
+# Max = 0.91*0.82 = 0.7462. Min is....(0.37/2 * 0.38/2) = 0.035 = 0.4 
+fitdist(rtriangle(100000, 0.01, 0.75, 0.14), "beta", method = "mle") # For a triangular dist, the values must be 0-1
+hist(rbeta(10000, shape1 = 2.2, shape2 = 5.1)) #shape1 = 2.26, shape2 = 5.137
+summary(rbeta(1000, 2.2, 5.1))
+HLM.mcstoc <- mcstoc(rbeta, type="V", shape1 = 2.2, shape2 = 5.1, rtrunc=TRUE, linf=0)
+
+
 
 #####################################################################################
 #####################################################################################
@@ -1095,17 +1150,16 @@ object.soil.concentration.mcstoc <- floor.soil.concentration * object.floor.load
 hist(object.soil.concentration.mcstoc)
 hist(log10(object.soil.concentration.mcstoc))
 
-
 # In Bangladesh, the load of dust/soil on surface is infinite, so we can't use this method
-# Instead assume that loading on object is the SAME (upper bound) as loading on floor
+# Instead assume that upper bound of load on object is the 70% of loading on floor -- 70% is based on the upper bound from Gurunuthan
 # Floor loading in Giza, Egypt (where I recall SUPER bad air quality)(Khoder, 2010 n = 6 homes): indoor median = 1.45 g /m2 = 0.145 mg/cm2 , outdoor median = 8.22 g/m2
 # This study is not clear on how these values were obtained....
 # Floor loading in Delhi based on Kumar 2009 lead on floors and Banerjee 2003 lead in dust (n = 8 homes):  0.001576 mg/cm2
 
-fitdist(rtriangle(100000, 0.00, 0.145, 0.001576), "beta", method = "mle") # For a triangular dist, the values must be 0-1
-hist(rtriangle(100000, 0.00, 0.145, 0.001576))
-hist(rbeta(10000, 1.47, 28.76))
-summary(rbeta(10000, 1.47, 28.76))
+fitdist(rtriangle(100000, 0.0001, 0.145*0.70, 0.001576*0.70), "beta", method = "mle") # For a triangular dist, the values must be 0-1
+hist(rtriangle(100000, 0.0001, 0.145*0.70, 0.001576*0.70))
+hist(rbeta(10000, 1.5, 42.1)) # shape1 = 1.4896, shape2 = 42.1495
+summary(rbeta(10000, 1.5, 42.1))
 
 object.soil.concentration.mcstoc <- mcstoc(rbeta, shape1 = 1.47, shape2 = 28.76, type = "V")
 
@@ -1122,88 +1176,155 @@ object.soil.concentration.mcstoc <- mcstoc(rbeta, shape1 = 1.47, shape2 = 28.76,
 
 # fomites <- c("PlantMaterial","Metal","Paper","Cloth","OtherObject","Plastic","Wood/Bricks","Utensil")
 
-# Consider only OM contacts with non-cloth and non-utensil objects, as these aren't expected to be contaminated with soil
-# though the could (and are) contaminated with EC. 
+###### In the code below I include CLOTH (and utensils) as objects that could be contaminated with soil and are mouthed. 
+# The consideration of cloth is due to the Stanton 1986 report that soiled saris are associated with the onset of diarrhea
+# Also, this allows me to use the Weibull shape and scale parameters in the Longitudinal paper
+# and if I exclude cloth, the weibull distribution no longer fits; for most the normal dist fits instead. This could get really confusing. Much easier (and I think not inaccurate) to cite the Longitudinal paper
 
-## Structured observations
-SO.OM <- SO.allObs %>%
-  filter(location == 3) %>%
-  mutate(round = "so.1") %>%
-  select(participant_id,  round, age_SO_mo, age_SO_group, toy_m_tot_freq) %>% # Omit cloth_m_tot_freq (obj_m_tot_freq = cloth_m_tot_freq + toy_m_tot_freq)
-  replace(is.na(.), 0) # Slightly risky because this will replace all na with 0, but I've checked many times and the only na values are in toy_m_tot_freq (two kids age 2 and 4 months), which are the ones I want to replace with 0
-names(SO.OM) <- c("hh", "round", "age", "age.group", "OM")
+OM.weibull.base <- read.csv("C:/Users/Tareq/Box Sync/VO R123/T8.in.out.allloc.weibull.shape.scale.csv")
+names(OM.weibull.base) <- c("obj", "shape.4", "scale.4", "shape.5", "scale.5", "shape.6", "scale.6", "shape.7", "scale.7", "extra1", "extra2")
+OM.weibull <- OM.weibull.base %>%
+  filter(obj == "fomites") 
 
+# For kids <6 (f6) use data from Longitudinal that is unpublished (didn't want to publish bc based on so few kids but here it is better than nothing or using data from 6_12 which is too high)
+# From the VO_Longitudinal Analysis_170614
+# fitdist(Kwong[Kwong$actobj.class == "Mouth_hands", "freq"], "weibull", method = "mle") # shape = 1.976, scale = 43.237
+# fitdist(Kwong[Kwong$actobj.class == "Mouth_hands_nd", "freq"], "weibull", method = "mle") # shape = 2.880, scale = 35.404
+# fitdist(Kwong[Kwong$actobj.class == "Mouth_fomites", "freq"], "weibull", method = "mle") # shape = 1.478, scale = 38.30
+OM.f6.mcstoc <- mcstoc(rweibull, type="V", shape = 1.5, scale = 38.30, rtrunc=TRUE, linf=0)
 
-## Video observations
-vo123.obj.base <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.11.obj.csv")
-vo123.obj.base <- vo123.obj.base[!is.na(vo123.obj.base$round),]
-VO.OM.sepfreqs <- vo123.obj.base %>%
-  filter(actobj %in% c("Mouth_PlantMaterial", "Mouth_Metal", "Mouth_Paper", "Mouth_Plastic", "Mouth_OtherObject", "Mouth_Wood/Bricks")) %>% # Omit Mouth_Cloth & Mouth_Utensil
-  select(hh, round, age.mo, age.group, actobj, freq) %>%
-  spread(actobj, freq) %>%
-  mutate(OM.freq = rowSums(.[5:10], na.rm = TRUE))
+OM.6_12.mcstoc <- mcstoc(rweibull, type="V", shape = OM.weibull$shape.4, scale = OM.weibull$scale.4, rtrunc=TRUE, linf=0)
+# node    mode  nsv nsu nva variate   min mean median max Nas type outm
+# 1    x numeric 1001   1   1       1 0.303 46.4   42.3 157   0    V each
+OM.12_24.mcstoc <- mcstoc(rweibull, type="V", shape = OM.weibull$shape.5, scale = OM.weibull$scale.5, rtrunc=TRUE, linf=0)
+# node    mode  nsv nsu nva variate  min mean median max Nas type outm
+# 1    x numeric 1001   1   1       1 0.11 24.2   20.4 105   0    V each
+OM.24_36.mcstoc <- mcstoc(rweibull, type="V", shape = OM.weibull$shape.6, scale = OM.weibull$scale.6, rtrunc=TRUE, linf=0)
+# node    mode  nsv nsu nva variate   min mean median max Nas type outm
+# 1    x numeric 1001   1   1       1 0.201 23.9   21.3 103   0    V each
+OM.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = OM.weibull$shape.7, scale = OM.weibull$scale.7, rtrunc=TRUE, linf=0)
+# node    mode  nsv nsu nva variate   min mean median  max Nas type outm
+# 1    x numeric 1001   1   1       1 0.735 18.9   17.6 61.5   0    V each
 
-VO.OM <- VO.OM.sepfreqs %>%
-  select(hh, round, age.mo, age.group, OM.freq) %>%
-  arrange(age.mo, round, hh)
+# # Consider only OM contacts with non-cloth objects, as these aren't expected to be contaminated with soil
+# # though the could (and are) contaminated with EC. 
+# 
+# ## Structured observations
+# SO.OM <- SO.allObs %>% ## OMIT CLOTH BUT INCLUDE UTENSIL< WHICH IS NOT EXPLICITLY CAPTURED
+#   filter(location == 3) %>%
+#   mutate(round = "so.1") %>%
+#   select(participant_id,  round, age_SO_mo, age_SO_group, toy_m_tot_freq) %>% # Omit cloth_m_tot_freq (obj_m_tot_freq = cloth_m_tot_freq + toy_m_tot_freq)
+#   replace(is.na(.), 0) # Slightly risky because this will replace all na with 0, but I've checked many times and the only na values are in toy_m_tot_freq (two kids age 2 and 4 months), which are the ones I want to replace with 0
+# names(SO.OM) <- c("hh", "round", "age", "age.group", "OM")
+# 
+# 
+# ## Video observations ## OMIT  CLOTH BUT INCLUDE UTENSIL
+# vo123.obj.base <- read.csv("C:/Users/Tareq/Box Sync/VO R123/vo.11.obj.csv")
+# vo123.obj.base <- vo123.obj.base[!is.na(vo123.obj.base$round),]
+# VO.OM.sepfreqs <- vo123.obj.base %>%
+#   filter(actobj %in% c("Mouth_PlantMaterial", "Mouth_Metal", "Mouth_Paper", "Mouth_Plastic", "Mouth_OtherObject", "Mouth_Wood/Bricks", "Mouth_utensil")) %>% # Omit Mouth_Cloth
+#   select(hh, round, age.mo, age.group, actobj, freq) %>%
+#   spread(actobj, freq) %>%
+#   mutate(OM.freq = rowSums(.[5:10], na.rm = TRUE))
+# 
+# VO.OM <- VO.OM.sepfreqs %>%
+#   select(hh, round, age.mo, age.group, OM.freq) %>%
+#   arrange(age.mo, round, hh)
+# 
+# # There are only 50 (hh, vo.num) combinations in VO.OM.summary but there were 57 hh observations in vo.1 and vo.2 
+# # so in 7 hh there was NO mouthing of an object that was not cloth or utensils. 
+# # Seems unlikely but maybe these were older kids. 
+# # Find which are missing using setdiff() and add them to VO.OM.summary
+# hh.zero.OM <- setdiff(unique(vo123.obj.base[,c("hh","round", "age.mo", "age.group")]), unique(VO.OM[,c("hh","round", "age.mo", "age.group")]))
+# hh.zero.OM$OM.freq <- 0
+# 
+# VO.OM <- rbind(VO.OM, hh.zero.OM)
+# 
+# names(VO.OM) <- c("hh", "round", "age", "age.group", "OM")
+# 
+# OM <- rbind(SO.OM, VO.OM)
+# OM[OM$OM < 0.001, "OM"] <- 0.001
+# 
+# hist(OM[OM$age > 6 & OM$age <= 12, "OM"])
+# hist(OM[OM$age > 12 & OM$age <= 24, "OM"])
+# 
+# ### Which distribution is suitable? Weibull, based on Xue meta-analysis, also the best fit for our dist based on code in 1120
+# # Doesn't seem to fit pretty well for the data here
+# bestFitDist(data = sample((OM[OM$age < 6, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
+# summary(OM[OM$age < 6, "OM"])
+# ### all of the distributions fit terribly, normal sort of fits the best
+# bestFitDist(data = sample((OM[OM$age < 12, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
+# summary(OM[OM$age < 12, "OM"])
+# # normal fits better than Weibull
+# OM.f6.dist <- fitdist(OM[OM$age < 6, "OM"], "weibull", method = "mle")
+# OM.f6.mcstoc <- mcstoc(rweibull, type="V", shape = OM.f6.dist$estimate[[1]], scale = OM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+# # OM.f6.mcstoc <- mcstoc(rempiricalD, values = OM[OM$age < 6, "OM"], type="V", nsv = ndvar())
+# # # mean 21.6, med = 8.97, max = 80.1
+# 
+# bestFitDist(data = sample((OM[OM$age > 6 & OM$age <= 12, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
+# summary(OM[OM$age > 6 & OM$age <= 12, "OM"])
+# OM.6_12.dist <- fitdist(OM[OM$age > 6 & OM$age <= 12, "OM"], "weibull", method = "mle")
+# OM.6_12.mcstoc <- mcstoc(rweibull, type="V", shape = OM.6_12.dist$estimate[[1]], scale = OM.6_12.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+# 
+# bestFitDist(data = sample((OM[OM$age > 12 & OM$age <= 24, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
+# # normal fits better than Weibull
+# OM.12_24.dist <- fitdist(OM[OM$age > 12 & OM$age <= 24, "OM"], "weibull", method = "mle")
+# OM.12_24.mcstoc <- mcstoc(rweibull, type="V", shape = OM.12_24.dist$estimate[[1]], scale = OM.12_24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+# 
+# bestFitDist(data = sample((OM[OM$age > 24, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
+# # normal fits better than Weibull
+# OM.24_36.dist <- fitdist(OM[OM$age > 24, "OM"], "weibull", method = "mle")
+# OM.24_36.mcstoc <- mcstoc(rweibull, type="V", shape = OM.24_36.dist$estimate[[1]], scale = OM.24_36.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+# 
+# 
+# bestFitDist(data = sample((OM[OM$age > 36, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
+# OM.36_48.dist <- fitdist(OM[OM$age > 36, "OM"], "weibull", method = "mle")
+# OM.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = OM.36_48.dist$estimate[[1]], scale = OM.36_48.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 
-# There are only 50 (hh, vo.num) combinations in VO.OM.summary but there were 57 hh observations in vo.1 and vo.2 
-# so in 7 hh there was NO mouthing of an object that was not cloth or utensils. 
-# Seems unlikely but maybe these were older kids. 
-# Find which are missing using setdiff() and add them to VO.OM.summary
-hh.zero.OM <- setdiff(unique(vo123.obj.base[,c("hh","round", "age.mo", "age.group")]), unique(VO.OM[,c("hh","round", "age.mo", "age.group")]))
-hh.zero.OM$OM.freq <- 0
+################################################################################################################
+########################## Surface area of object that is mouthed ################
 
-VO.OM <- rbind(VO.OM, hh.zero.OM)
+# # Oz cites Leckie exponential(min = 1, mean = 10, max = 50)
+# # low <- 1
+# # high <- 50
+# # r <- 0.11 ## Just adjusted r by trial and error until I got the mean = 10 that Oz used
+# # C <- exp(-r*high); D <- exp(-r*low) 
+# # n <- 10000 
+# # U <- runif(n, min = C, max = D) 
+# # X <- (1/r)*log(1/U) 
+# # hist(X, breaks=100, xlim=c(0,50)) 
+# # summary(X)
+# obj.SA.mouthed.mcstoc <- mcstoc(rexp, type = "V", rate = 0.11, rtrunc = TRUE, linf = 1, lsup = 50)
 
-names(VO.OM) <- c("hh", "round", "age", "age.group", "OM")
+# With my own analysis of Leckie 2000, restricting to the 14 children ages 1-4 (which is helpful bc one child 5 years old didn't put any obj in his mouth and thus data analysis could be tricky)
+# replace the range of SA of objects with the mean since I have no info if the object that was actually mouthed was closer to the min or max or had any other type of distribution
+obj.SA.pc.time <- read_excel("C:/Users/Tareq/Box Sync/VO R123/Object surface area in mouthing_LK analysis of Leckie 2000.xlsx", sheet = "raw obj SA from Leckie 2000")
+obj.SA.time <- obj.SA.pc.time %>%
+  select(-SAcm2.char) %>%
+  group_by(id) %>%
+  mutate(pc.freq = prop.table(count)) %>%
+  # summarise(total = sum(pc.freq)) %>%
+  filter(age < 5)
 
-OM <- rbind(SO.OM, VO.OM)
-OM[OM$OM < 0.001, "OM"] <- 0.001
-#### will need to remove this line when fix 2302 associated with NAs
-OM <- OM[1:nrow(OM)-1,]
+obj.SA.cm2.boot <- sample(as.numeric(unlist(obj.SA.pc.time[,"SAcm2"])), size=1000, replace=TRUE, prob = prop.table(as.numeric(unlist(obj.SA.pc.time[,"count"])))) # The prop.table expresses table entries as fraction of marginal table =  hand.config.time.SA.oral$frac.time/sum(hand.config.time.SA.oral$frac.time)
 
-hist(OM[OM$age > 6 & OM$age <= 12, "OM"])
-hist(OM[OM$age > 12 & OM$age <= 24, "OM"])
+obj.SA.mouthed.mcstoc <- mcstoc(rempiricalD, values = obj.SA.cm2.boot, type = "V", nsv = ndvar())
+hist(obj.SA.mouthed.mcstoc) # mean = 18cm2 - good, this is much closer to the est of the SA of the hand that they put into their mouths (though it does make sense that they can stick more hand SA than obj SA in their mouths since hands have a lot of SA) )
 
-### Which distribution is suitable? Weibull, based on Xue meta-analysis, also the best fit for our dist based on code in 1120
-# Doest seem to fit pretty well for the data here
-bestFitDist(data = sample((OM[OM$age < 6, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
-### all of the distributions fit terribly, normal sort of fits the best
-OM.f6.dist <- fitdist(OM[OM$age < 6, "OM"], "weibull", method = "mle")
-OM.f6.mcstoc <- mcstoc(rweibull, type="V", shape = OM.f6.dist$estimate[[1]], scale = OM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
-
-bestFitDist(data = sample((OM[OM$age > 6 & OM$age <= 12, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
-OM.6_12.dist <- fitdist(OM[OM$age > 6 & OM$age <= 12, "OM"], "weibull", method = "mle")
-OM.6_12.mcstoc <- mcstoc(rweibull, type="V", shape = OM.f6.dist$estimate[[1]], scale = OM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
-
-bestFitDist(data = sample((OM[OM$age > 12 & OM$age <= 24, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
-OM.12_24.dist <- fitdist(OM[OM$age > 12 & OM$age <= 24, "OM"], "weibull", method = "mle")
-OM.12_24.mcstoc <- mcstoc(rweibull, type="V", shape = OM.f6.dist$estimate[[1]], scale = OM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
-
-bestFitDist(data = sample((OM[OM$age > 24, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
-OM.24_36.dist <- fitdist(OM[OM$age > 24, "OM"], "weibull", method = "mle")
-OM.24_36.mcstoc <- mcstoc(rweibull, type="V", shape = OM.f6.dist$estimate[[1]], scale = OM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
-
-bestFitDist(data = sample((OM[OM$age > 24, "OM"] + 10e-4), ndvar(), replace = TRUE), "Hand to mouth", "Hand to Mouth")
-OM.36_48.dist <- fitdist(OM[OM$age > 24, "OM"], "weibull", method = "mle")
-OM.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = OM.f6.dist$estimate[[1]], scale = OM.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
-
-################# Surface area of object that is mouthed ################
-# Oz cites Leckie exponential(min = 1, mean = 10, max = 50)
-# low <- 1
-# high <- 50
-# r <- 0.11 ## Just adjusted r by trial and error until I got the mean = 10 that Oz used
-# C <- exp(-r*high); D <- exp(-r*low) 
-# n <- 10000 
-# U <- runif(n, min = C, max = D) 
-# X <- (1/r)*log(1/U) 
-# hist(X, breaks=100, xlim=c(0,50)) 
-# summary(X)
-
-obj.SA.mouthed.mcstoc <- mcstoc(rexp, type = "V", rate = 0.11, rtrunc = TRUE, linf = 1, lsup = 50)
-hist(obj.SA.mouthed.mcstoc)
-
+# > obj.SA.mouthed.mcstoc
+# node    mode  nsv nsu nva variate min mean median max Nas type outm
+# 1    x numeric 1001   1   1       1   5 18.5   13.5  41   0    V each# > C.hand.SA.WASHB.inMouth.f6.mcstoc
+# node    mode  nsv nsu nva variate  min mean median  max Nas type outm
+# 1    x numeric 1001   1   1       1 5.63 17.2   16.9 56.7   0    V each
+# > C.hand.SA.WASHB.inMouth.6_12.mcstoc
+# node    mode  nsv nsu nva variate  min mean median  max Nas type outm
+# 1    x numeric 1001   1   1       1 5.32 19.5   18.9 80.1   0    V each
+# > C.hand.SA.WASHB.inMouth.12_24.mcstoc
+# node    mode  nsv nsu nva variate  min mean median  max Nas type outm
+# 1    x numeric 1001   1   1       1 6.66 23.8   23.5 96.2   0    V each
+# > C.hand.SA.WASHB.inMouth.24_36.mcstoc
+# node    mode  nsv nsu nva variate  min mean median  max Nas type outm
+# 1    x numeric 1001   1   1       1 7.69   25     24 85.8   0    V each
 
 ####### Object-to-mouth transfer efficiency ##########
 
@@ -1371,8 +1492,8 @@ SM.consumerfrac.p1.36_48 <- (27.4)/100 ## I don't have a value for children this
 
 ######################### Number of direct soil-to-mouth contacts ####################
 # Soil ingestion rate for each child within each age group (not summarized by age group)
-## OF THOSE WHO CONSUMED SOIL - NOT CONSUMERS WILL BE REMOVD IN THE MCPROBTREE
-## recall HM.SM$SM_freq is per HOUR - we need per DAY
+## OF THOSE WHO CONSUMED SOIL - NOT CONSUMERS WILL BE REMOVED IN THE MCPROBTREE
+## recall HM.SM$SM_freq is per HOUR - we need per DAY, which we get in line 1572 ("Back to soil consumption")
 SM.f6 <- HM.SM[HM.SM$age.group %in% c(2,3) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
 SM.f6.mcstoc <- mcstoc(rempiricalD, values = SM.f6, type="V", nsv = ndvar())
 SM.6_12 <- HM.SM[HM.SM$age.group %in% c(4) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
@@ -1519,7 +1640,8 @@ soil.direct.36_48 <-  SM.fracfreq.36_48 * SM.ingested.amt.mcstoc # mg # as of 25
 child.hand.soil.concentration.mg.cm2 <- soil.C.conc
 # child.hand.mouth.frequency.events.hr
 # child.hand.surface.area.cm2
-child.hand.fraction.mouthed <- HF.child.mcstoc
+child.hand.fraction.mouthed.oral <- HF.child.oral.mcstoc
+child.hand.fraction.mouthed.periooral <- HF.child.perioral.mcstoc
 mom.hand.soil.load.mg <- soil.M.load.mcstoc
 # mom.hand.mouth.nonfood.frequency.events.hr
 # mom.feeding.frequency.events.hr
