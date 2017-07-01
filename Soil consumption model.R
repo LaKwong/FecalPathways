@@ -1686,6 +1686,7 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
   child.hand.surface.area.cm2 <- get(paste("C.hand.SA.WASHB.", age.group, ".mcstoc", sep = ""))
   child.hand.mouth.oral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.oral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
   child.hand.mouth.perioral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.perioral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  child.frac.dietary <- (get(paste("HM.child.d.", age.group, ".mcstoc", sep = "")))/ (get(paste("HM.child.d.", age.group, ".mcstoc", sep = "")) + get(paste("HM.child.nd.", age.group, ".mcstoc", sep = "")))
   mom.hand.mouth.nonfood.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.nd"], type = "V", nsv = ndvar())
   mom.feeding.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.d.events"], type = "V", nsv = ndvar())
   mom.hand.fraction.mouthed.oral <- get(paste("HF.ofmom.oral.", age.group, sep = ""))
@@ -1698,7 +1699,8 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
     
     child.hand.oral.soil.day <- (child.hand.soil.concentration.mg.cm2 * child.hand.surface.area.cm2 * child.hand.fraction.mouthed.oral * child.hand.mouth.oral.frequency.events.day * saliva.removal.efficiency)
     child.hand.perioral.soil.day <- (child.hand.soil.concentration.mg.cm2 * child.hand.surface.area.cm2 * child.hand.fraction.mouthed.perioral * child.hand.mouth.perioral.frequency.events.day * saliva.removal.efficiency)
-    child.hand.soil.day <- child.hand.oral.soil.day + child.hand.perioral.soil.day
+    child.hand.dietary.soil.day <- (child.hand.oral.soil.day + child.hand.perioral.soil.day) * child.frac.dietary 
+    child.hand.nondietary.soil.day <- (child.hand.oral.soil.day + child.hand.perioral.soil.day) * (1-child.frac.dietary)
     mom.hand.oral.soil.day <- ((mom.hand.soil.load.mg / mom.hand.surface.area.cm2) * (mom.hand.surface.area.cm2 * mom.hand.fraction.mouthed.oral) * mom.feeding.frequency.events.day) * saliva.removal.efficiency
     mom.hand.perioral.soil.day <- ((mom.hand.soil.load.mg / mom.hand.surface.area.cm2) * (mom.hand.surface.area.cm2 * mom.hand.fraction.mouthed.perioral) * mom.hand.mouth.nonfood.frequency.events.day) * saliva.removal.efficiency
     mom.hand.soil.day <- mom.hand.oral.soil.day + mom.hand.perioral.soil.day
@@ -1711,7 +1713,7 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
        mom.hand.soil.load.mg, mom.hand.surface.area.cm2, mom.feeding.frequency.events.day, mom.hand.fraction.mouthed.oral, mom.hand.mouth.nonfood.frequency.events.day, mom.hand.fraction.mouthed.perioral,
        obj.soil.concentration, child.obj.mouth.frequency.events.day, obj.SA.mouthed, saliva.removal.efficiency,
        soil.directly.ingested.mg, child.ingested.soil.frequency.events.day, #hours.awake, 
-       child.hand.soil.day, mom.hand.soil.day, child.obj.soil.day, child.direct.soil.day, amt.soil.ingested.mg.day) #sleep.day.24_36,
+       child.hand.nondietary.soil.day, child.hand.dietary.soil.day, mom.hand.soil.day, child.obj.soil.day, child.direct.soil.day, amt.soil.ingested.mg.day) #sleep.day.24_36,
     #   mc(child.hand.soil.day, mom.hand.soil.day, child.obj.soil.day, hours.awake, amt.soil.ingested.mg.day)
   })
   
