@@ -620,11 +620,7 @@ C.hand.SA.WASHB.lm <- lm(C.hand.SA ~ age.mo, C.hand.SA.WASHB)
 summary(C.hand.SA.WASHB.lm)$r.squared # 0.662 # yes, same as adj r squared value
 summary(C.hand.SA.WASHB.lm)$adj.r.squared # 0.66
 C.hand.SA.WASHB.36_48$C.hand.SA <- predict(lm(C.hand.SA~age.mo, data = C.hand.SA.WASHB), newdata = data.frame(age.mo = C.hand.SA.WASHB.36_48$age.mo))
-
 C.hand.SA.WASHB.36_48.mcstoc <- mcstoc(rempiricalD, values = C.hand.SA.WASHB.36_48$C.hand.SA, type = "V", nsv = ndvar())
-
-qplot(C.hand.SA.WASHB.24_36, geom = "histogram", binwidth = 1)
-
 
 
 # # By month-specific age
@@ -805,30 +801,59 @@ VO.HM.SM <- left_join(VO.HM.SM.handscontacts[,c("hh", "round", "age", "age.group
 
 HM.SM.prefeedingevents <- rbind(SO.HM.SM, VO.HM.SM)
 
-scatter.smooth(HM.SM[,c("age", "HM_freq")])
-scatter.smooth(HM.SM[,c("age", "SM_freq")])
+scatter.smooth(HM.SM.prefeedingevents[,c("age", "HM_freq")])
+scatter.smooth(HM.SM.prefeedingevents[,c("age", "SM_freq")])
 
 
 # For all the kids that only have total HM values from the SO, need to est child, mom_d, mom_nd
 # Est using the VO results for children 6-12 mo
 # For the other children, use the actual child, mom_d, and mom_nd recorded in the VO
 
+##### For BOTH mothers and children, assume that there is NOT recontamination of hands between unique feeding events
+# Unique feeding events are defined as events with a contacts that has event != "feeding"   between contacts with event == "feeding"
+# An contact with event == "feeding" is within 15 seconds before or after a contact of Mouth_food so unique feeding events have at least 30 seconds between Mouth_food events. 
+# While there may not be recontamination event even when Mouth_food events are separated by 30 seconds 
+# (such as when a child is carrying around a piece of fruit or potato chip and doesn't put it in the mouth frequently but also doesn't set it down to touch anything else),
+# we are going to assume 30 seconds is a fair time between unique feeding events. 
+# We can check this 30 second duration in a sensitivity analysis by changing how we denote contacts with event == "feeding" (would change the 15 second duration in VO step 3 vo.5, I think)
 
-### Must change to reflect that most mom HM contacts do not have recontam so really only want number of indep feeding events
+### Number of unique feeding EVENTS in which child feeds self ###
+feeding.child.freq <- read.csv("C:/Users/Tareq/Box Sync/VO R123/feeding.child.freq.csv")
+feeding.child.freq <- feeding.child.freq %>%
+  mutate(hh = as.factor(hh)) %>%
+  select(-X, -X.1) 
+names(feeding.child.freq) <- c("round", "hh", "age", "hh_feeding_events", "awake.h", "c_feeding_freq")
+
+# HM.SM <- left_join(HM.SM.prefeedingevents, feeding.child.freq[,c("hh", "round", "c_feeding_freq")], by = c("hh", "round")) %>%
+#   replace(is.na(.), 0) %>%
+#   arrange(age, round, hh)
+
+# HM.proportions <- left_join(hands_summary, feeding.child.freq, by = c("round", "hh", "age")) %>%
+#   select(round, hh, age, age.group, pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pf_other_hands_d)
+
+
+
+### Number of unique feeding EVENTS in which mother feeds child ###
 feeding.mom.freq <- read.csv("C:/Users/Tareq/Box Sync/VO R123/feeding.mom.freq.csv")
 feeding.mom.freq <- feeding.mom.freq %>%
   mutate(hh = as.factor(hh)) %>%
   select(-X, -X.1) 
 names(feeding.mom.freq) <- c("round", "hh", "age", "hh_feeding_events", "awake.h", "m_feeding_freq")
 
-HM.SM <- left_join(HM.SM.prefeedingevents, feeding.mom.freq[,c("hh", "round", "m_feeding_freq")], by = c("hh", "round")) %>%
+HM.SM <- left_join(HM.SM.prefeedingevents, feeding.child.freq[,c("hh", "round", "c_feeding_freq")], by = c("hh", "round")) %>%
+  left_join(feeding.mom.freq[, c("hh", "round", "m_feeding_freq")], by = c("hh", "round")) %>%
   replace(is.na(.), 0) %>%
   arrange(age, round, hh)
 
-HM.proportions <- left_join(hands_summary, feeding.mom.freq, by = c("round", "hh", "age")) %>%
-  select(round, hh, age, age.group, pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pf_other_hands_d)
+HM.proportions <- left_join(hands_summary, feeding.child.freq, by = c("round", "hh", "age")) %>%
+  left_join(feeding.mom.freq, by = c("round", "hh", "age")) %>%
+  select(round, hh, age, age.group, pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pf_other_hands_d, c_feeding_freq)
+
+scatter.smooth(HM.SM$age, HM.SM$c_feeding_freq)
+# There is no trend by age, so use feeding freq from any age for a child of any age
 
 scatter.smooth(HM.SM$age, HM.SM$m_feeding_freq)
+plot(HM.SM$age, HM.SM$m_feeding_freq)
 # There is no trend by age, so use feeding freq from any age for a child of any age
 
 ########### FOR THE STRUCTURED OBSERVATION ONLY, ESTIMATE THE BREAKDOWN OF CONTACTS BETWEEN MOTHER AND CHILD, DIETARY and NON #########
@@ -866,43 +891,42 @@ HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, "HM_m_nd_freq"] <- HM.proport
 HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, "HM_m_d_freq"] <- HM.proportions.12_24[HM.proportions.index.12_24, "pf_other_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5,"HM_freq"]
 HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, "HM_c_freq"] <- rowSums(HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 5, c("HM_c_nd_freq", "HM_c_d_freq")]) 
 
-HM.proportions.24_36 <- HM.proportions %>% filter(age.group == 6) %>% select(pf_child_hands_nd, pf_child_hands_d, pf_other_hands_nd, pf_other_hands_d) /100
-HM.proportions.index.24_36 <- sample(c(1:nrow(HM.proportions.24_36)), size = nrow(HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,]), replace = TRUE)
-HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_c_nd_freq"] <- HM.proportions.24_36[HM.proportions.index.24_36, "pf_child_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,"HM_freq"]
-HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_c_d_freq"] <- HM.proportions.24_36[HM.proportions.index.24_36, "pf_child_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,"HM_freq"]
-HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_m_nd_freq"] <- HM.proportions.24_36[HM.proportions.index.24_36, "pf_other_hands_nd"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,"HM_freq"]
-HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_m_d_freq"] <- HM.proportions.24_36[HM.proportions.index.24_36, "pf_other_hands_d"] * HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6,"HM_freq"]
-HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, "HM_c_freq"] <- rowSums(HM.SM[HM.SM$round == "so1" & HM.SM$age.group == 6, c("HM_c_nd_freq", "HM_c_d_freq")]) 
+#There are no children in SO that were in age group 6 (24_36) or 7 (36_48)
 
 ##### Create mcnodes made using mcstoc(rempirical) from all the hand contact data that is summarized in HM.SM ######
 ## In the code that follows this block, Will be replaced by DISTRIBUTIONS for this data, if distributions exist
 HM.child.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "HM_c_freq"], type = "V", nsv = ndvar())
 HM.child.nd.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "HM_c_nd_freq"], type = "V", nsv = ndvar())
 HM.child.d.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.child.d.events.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "c_feeding_freq"], type = "V", nsv = ndvar())
 HM.mom.nd.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "HM_m_nd_freq"], type = "V", nsv = ndvar())
 HM.mom.d.events.f6.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(2,3), "m_feeding_freq"], type = "V", nsv = ndvar())
 
 HM.child.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "HM_c_freq"], type = "V", nsv = ndvar())
 HM.child.nd.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "HM_c_nd_freq"], type = "V", nsv = ndvar())
 HM.child.d.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.child.d.events.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "c_feeding_freq"], type = "V", nsv = ndvar())
 HM.mom.nd.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "HM_m_nd_freq"], type = "V", nsv = ndvar())
 HM.mom.d.events.6_12.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(4), "m_feeding_freq"], type = "V", nsv = ndvar())
 
 HM.child.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "HM_c_freq"], type = "V", nsv = ndvar())
 HM.child.nd.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "HM_c_nd_freq"], type = "V", nsv = ndvar())
 HM.child.d.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.child.d.events.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "c_feeding_freq"], type = "V", nsv = ndvar())
 HM.mom.nd.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "HM_m_nd_freq"], type = "V", nsv = ndvar())
 HM.mom.d.events.12_24.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(5), "m_feeding_freq"], type = "V", nsv = ndvar())
 
 HM.child.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "HM_c_freq"], type = "V", nsv = ndvar())
 HM.child.nd.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "HM_c_nd_freq"], type = "V", nsv = ndvar())
 HM.child.d.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.child.d.events.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "c_feeding_freq"], type = "V", nsv = ndvar())
 HM.mom.nd.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "HM_m_nd_freq"], type = "V", nsv = ndvar())
 HM.mom.d.events.24_36.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(6), "m_feeding_freq"], type = "V", nsv = ndvar())
 
 HM.child.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "HM_c_freq"], type = "V", nsv = ndvar())
 HM.child.nd.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "HM_c_nd_freq"], type = "V", nsv = ndvar())
 HM.child.d.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "HM_c_d_freq"], type = "V", nsv = ndvar())
+HM.child.d.events.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "c_feeding_freq"], type = "V", nsv = ndvar())
 HM.mom.nd.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "HM_m_nd_freq"], type = "V", nsv = ndvar())
 HM.mom.d.events.36_48.mcstoc <- mcstoc(rempiricalD, values = HM.SM[HM.SM$age.group %in% c(7), "m_feeding_freq"], type = "V", nsv = ndvar())
 
@@ -931,6 +955,8 @@ HM.child.nd.f6.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(2,3), "HM_c_nd_freq"
 HM.child.nd.f6.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.nd.f6.dist$estimate[[1]], scale = HM.child.nd.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.child.d.f6.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(2,3), "HM_c_d_freq"], "weibull", method = "mle")
 HM.child.d.f6.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.f6.dist$estimate[[1]], scale = HM.child.d.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.child.d.events.f6.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(2,3), "c_feeding_freq"], "weibull", method = "mle")
+HM.child.d.events.f6.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.events.f6.dist$estimate[[1]], scale = HM.child.d.events.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.nd.f6.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(2,3), "HM_m_nd_freq"], "weibull", method = "mle")
 HM.mom.nd.f6.mcstoc <- mcstoc(rweibull, type="V", shape = HM.mom.nd.f6.dist$estimate[[1]], scale = HM.mom.nd.f6.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.d.events.f6.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(2,3), "m_feeding_freq"], "weibull", method = "mle")
@@ -942,6 +968,8 @@ HM.child.nd.6_12.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(4), "HM_c_nd_freq"
 HM.child.nd.6_12.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.nd.6_12.dist$estimate[[1]], scale = HM.child.nd.6_12.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.child.d.6_12.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(4), "HM_c_d_freq"], "weibull", method = "mle")
 HM.child.d.6_12.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.6_12.dist$estimate[[1]], scale = HM.child.d.6_12.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.child.d.events.6_12.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(4), "c_feeding_freq"], "weibull", method = "mle")
+HM.child.d.events.6_12.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.events.6_12.dist$estimate[[1]], scale = HM.child.d.events.6_12.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.nd.6_12.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(4), "HM_m_nd_freq"], "weibull", method = "mle")
 HM.mom.nd.6_12.mcstoc <- mcstoc(rweibull, type="V", shape = HM.mom.nd.6_12.dist$estimate[[1]], scale = HM.mom.nd.6_12.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.d.events.6_12.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(4), "m_feeding_freq"], "weibull", method = "mle")
@@ -953,6 +981,8 @@ HM.child.nd.12_24.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(5), "HM_c_nd_freq
 HM.child.nd.12_24.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.12_24.dist$estimate[[1]], scale = HM.child.nd.12_24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.child.d.12_24.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(5), "HM_c_d_freq"], "weibull", method = "mle")
 HM.child.d.12_24.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.nd.12_24.dist$estimate[[1]], scale = HM.child.d.12_24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.child.d.events.12_24.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(5), "c_feeding_freq"], "weibull", method = "mle")
+HM.child.d.events.12_24.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.events.12_24.dist$estimate[[1]], scale = HM.child.d.events.12_24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.nd.12_24.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(5), "HM_m_nd_freq"], "weibull", method = "mle")
 HM.mom.nd.12_24.mcstoc <- mcstoc(rweibull, type="V", shape = HM.mom.nd.12_24.dist$estimate[[1]], scale = HM.mom.nd.12_24.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.d.events.12_24.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(5), "m_feeding_freq"], "weibull", method = "mle")
@@ -964,6 +994,8 @@ HM.child.nd.24_36.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(6), "HM_c_nd_freq
 HM.child.nd.24_36.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.24_36.dist$estimate[[1]], scale = HM.child.nd.24_36.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.child.d.24_36.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(6), "HM_c_d_freq"], "weibull", method = "mle")
 HM.child.d.24_36.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.nd.24_36.dist$estimate[[1]], scale = HM.child.d.24_36.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.child.d.events.24_36.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(6), "c_feeding_freq"], "weibull", method = "mle")
+HM.child.d.events.24_36.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.events.24_36.dist$estimate[[1]], scale = HM.child.d.events.24_36.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.nd.24_36.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(6), "HM_m_nd_freq"], "weibull", method = "mle")
 HM.mom.nd.24_36.mcstoc <- mcstoc(rweibull, type="V", shape = HM.mom.nd.24_36.dist$estimate[[1]], scale = HM.mom.nd.24_36.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.d.events.24_36.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(6), "m_feeding_freq"], "weibull", method = "mle")
@@ -975,6 +1007,8 @@ HM.child.nd.36_48.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(7), "HM_c_nd_freq
 HM.child.nd.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.36_48.dist$estimate[[1]], scale = HM.child.nd.36_48.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.child.d.36_48.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(7), "HM_c_d_freq"], "weibull", method = "mle")
 HM.child.d.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.nd.36_48.dist$estimate[[1]], scale = HM.child.d.36_48.dist$estimate[[2]], rtrunc=TRUE, linf=0)
+HM.child.d.events.36_48.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(7), "c_feeding_freq"], "weibull", method = "mle")
+HM.child.d.events.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = HM.child.d.events.36_48.dist$estimate[[1]], scale = HM.child.d.events.36_48.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.nd.36_48.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(7), "HM_m_nd_freq"], "weibull", method = "mle")
 HM.mom.nd.36_48.mcstoc <- mcstoc(rweibull, type="V", shape = HM.mom.nd.36_48.dist$estimate[[1]], scale = HM.mom.nd.36_48.dist$estimate[[2]], rtrunc=TRUE, linf=0)
 HM.mom.d.events.36_48.dist <- fitdist(HM.SM[HM.SM$age.group %in% c(7), "m_feeding_freq"], "weibull", method = "mle")
@@ -1094,37 +1128,17 @@ OMC.frac.time <- hand.config.time.SA %>%
 OMC.frac.time.boot <- sample(OMC.frac.time$OMC.frac.time, size = 1000, replace = TRUE)
 perioral.frac.mcstoc <- mcstoc(rempiricalD, values = OMC.frac.time.boot, type="V", nsv = ndvar())
 
-HM.child.perioral.f6.mcstoc <- HM.child.f6.mcstoc * perioral.frac.mcstoc
-# HM.mom.nd.f6.perioral.mcstoc <- HM.mom.nd.f6.mcstoc * perioral.frac.mcstoc
-# HM.mom.d.events.f6.perioral.mcstoc <- HM.mom.d.events.f6.mcstoc * perioral.frac.mcstoc
-HM.child.perioral.6_12.mcstoc <- HM.child.6_12.mcstoc * perioral.frac.mcstoc
-# HM.mom.nd.6_12.perioral.mcstoc <- HM.mom.nd.6_12.mcstoc * perioral.frac.mcstoc
-# HM.mom.d.events.6_12.perioral.mcstoc <- HM.mom.d.events.6_12.mcstoc * perioral.frac.mcstoc
-HM.child.perioral.12_24.mcstoc <- HM.child.12_24.mcstoc * perioral.frac.mcstoc
-# HM.mom.nd.12_24.perioral.mcstoc <- HM.mom.nd.12_24.mcstoc * perioral.frac.mcstoc
-# HM.mom.d.events.12_24.perioral.mcstoc <- HM.mom.d.events.12_24.mcstoc * perioral.frac.mcstoc
-HM.child.perioral.24_36.mcstoc <- HM.child.24_36.mcstoc * perioral.frac.mcstoc
-# HM.mom.nd.24_36.perioral.mcstoc <- HM.mom.nd.24_36.mcstoc * perioral.frac.mcstoc
-# HM.mom.d.events.24_36.perioral.mcstoc <- HM.mom.d.events.24_36.mcstoc * perioral.frac.mcstoc
-HM.child.perioral.36_48.mcstoc <- HM.child.36_48.mcstoc * perioral.frac.mcstoc
-# HM.mom.nd.36_48.perioral.mcstoc <- HM.mom.nd.36_48.mcstoc * perioral.frac.mcstoc
-# HM.mom.d.events.36_48.perioral.mcstoc <- HM.mom.d.events.36_48.mcstoc * perioral.frac.mcstoc
+HM.child.perioral.f6.mcstoc <- HM.child.nd.f6.mcstoc * perioral.frac.mcstoc + HM.child.d.events.f6.mcstoc * perioral.frac.mcstoc
+HM.child.perioral.6_12.mcstoc <- HM.child.nd.6_12.mcstoc * perioral.frac.mcstoc + HM.child.d.events.6_12.mcstoc * perioral.frac.mcstoc
+HM.child.perioral.12_24.mcstoc <- HM.child.nd.12_24.mcstoc * perioral.frac.mcstoc + HM.child.d.events.12_24.mcstoc * perioral.frac.mcstoc
+HM.child.perioral.24_36.mcstoc <- HM.child.nd.24_36.mcstoc * perioral.frac.mcstoc + HM.child.d.events.24_36.mcstoc * perioral.frac.mcstoc
+HM.child.perioral.36_48.mcstoc <- HM.child.nd.36_48.mcstoc * perioral.frac.mcstoc + HM.child.d.events.36_48.mcstoc * perioral.frac.mcstoc
 
-HM.child.oral.f6.mcstoc <- HM.child.f6.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.nd.f6.oral.mcstoc <- HM.mom.nd.f6.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.d.events.f6.oral.mcstoc <- HM.mom.d.events.f6.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.oral.6_12.mcstoc <- HM.child.6_12.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.nd.6_12.oral.mcstoc <- HM.mom.nd.6_12.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.d.events.6_12.oral.mcstoc <- HM.mom.d.events.6_12.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.oral.12_24.mcstoc <- HM.child.12_24.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.nd.12_24.oral.mcstoc <- HM.mom.nd.12_24.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.d.events.12_24.oral.mcstoc <- HM.mom.d.events.12_24.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.oral.24_36.mcstoc <- HM.child.24_36.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.nd.24_36.oral.mcstoc <- HM.mom.nd.24_36.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.d.events.24_36.oral.mcstoc <- HM.mom.d.events.24_36.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.oral.36_48.mcstoc <- HM.child.36_48.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.nd.36_48.oral.mcstoc <- HM.mom.nd.36_48.mcstoc * (1-perioral.frac.mcstoc)
-# HM.mom.d.events.36_48.oral.mcstoc <- HM.mom.d.events.36_48.mcstoc * (1-perioral.frac.mcstoc)
+HM.child.oral.f6.mcstoc <- HM.child.nd.f6.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.f6.mcstoc * (1-perioral.frac.mcstoc)
+HM.child.oral.6_12.mcstoc <- HM.child.nd.6_12.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.6_12.mcstoc * (1-perioral.frac.mcstoc)
+HM.child.oral.12_24.mcstoc <- HM.child.nd.12_24.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.12_24.mcstoc * (1-perioral.frac.mcstoc)
+HM.child.oral.24_36.mcstoc <- HM.child.nd.24_36.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.24_36.mcstoc * (1-perioral.frac.mcstoc)
+HM.child.oral.36_48.mcstoc <- HM.child.nd.36_48.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.36_48.mcstoc * (1-perioral.frac.mcstoc)
 
 ################## SEE Saliva extraction efficiency  = HMRE	Hand mouthing removal = transfer efficiency #######################
 
@@ -1494,10 +1508,10 @@ soil.survey %>%
 # 24-36 mo:   oneday.recall: 27.4% --> 27.4/(24 - rnorm(ndvar(), 12.0, 1.2)) = 0.022833  # hr asleep mean = 12.0, sd = 1.2
 
 ## Don't do soil consumption by hour, just do by day
-SM.consumerfrac.p1.f6 <- (8.3)/100 
-SM.consumerfrac.p1.6_12 <- (52.5)/100
-SM.consumerfrac.p1.12_24 <- (50.0)/100
-SM.consumerfrac.p1.24_36 <- (27.4)/100
+SM.consumerfrac.p1.f6 <- (8.3)/100 # Observational
+SM.consumerfrac.p1.6_12 <- (52.5)/100 # Survey
+SM.consumerfrac.p1.12_24 <- (50.0)/100 # Survey
+SM.consumerfrac.p1.24_36 <- (27.4)/100 # Survey
 SM.consumerfrac.p1.36_48 <- (27.4)/100 ## I don't have a value for children this age, so use the 24_36 soil ingetstion consumer fractions
 
 # # percent consumers/day divided by the number of hours awake per day --> to get this into a fraction between 0 and 1, must divide by 100
@@ -1549,9 +1563,10 @@ mouthing.types <- c(
   "HM.mom.nd", # caregiver non-dietary
   "HM.mom.d.events", # caregiver dietary
   "OM",
-  "SM", 
-  "HM.child" # non-dietary + dietary # don't need
-)
+  "SM" #, 
+  #"HM.child"#, # all oral (some dietary, some non-dietary) and perioral (some dietary, some non-dietary)
+  #"HM.mom" # all dietary (all oral) and non-dietary (all perioral)
+  )
 
 age.group.names <- c("f6", "6_12", "12_24", "24_36", "36_48")
 for(i in 1:length(age.group.names)){
@@ -1568,7 +1583,6 @@ allMouthingTable <- function(mouthing.type, age.group, i, j, mouthingTable){
   assign(paste(mouthing.type, ".", Aw.age.group, ".extra", sep = ""), sample(get(paste(mouthing.type, ".", age.group, ".mcstoc", sep = "")), 1) * get(Aw.age.group) %% 1)
   assign(paste(mouthing.type, ".", age.group, sep = ""), sum(get(paste(mouthing.type, ".", Aw.age.group, ".base", sep = "")), na.rm = TRUE) + get(paste(mouthing.type, ".", Aw.age.group, ".extra", sep = "")))
   mouthingTable[i, j] <- round(get(paste(mouthing.type, ".", age.group, sep = "")), digits = 1)
-  mouthingTable[, "HM.child"] <- rowSums(mouthingTable[, c("HM.child.oral", "HM.child.perioral")])
   return(mouthingTable) ## yaya! Just like in Java. Otherwise I need to set mouthing.f6 to save in the global environment (I've passed a copy, not by reference into the funciton; don't know how to pass by ref in R)
 }
 
@@ -1582,6 +1596,18 @@ for(k in 1:length(age.group.names)){
     }
   }
 }
+
+mouthing.f6[, "HM.child"] <- rowSums(mouthing.f6[, c("HM.child.oral", "HM.child.perioral")], na.rm = TRUE)
+mouthing.f6[, "HM.mom"] <- rowSums(mouthing.f6[, c("HM.mom.nd", "HM.mom.d.events")])
+mouthing.6_12[, "HM.child"] <- rowSums(mouthing.6_12[, c("HM.child.oral", "HM.child.perioral")], na.rm = TRUE)
+mouthing.6_12[, "HM.mom"] <- rowSums(mouthing.6_12[, c("HM.mom.nd", "HM.mom.d.events")])
+mouthing.12_24[, "HM.child"] <- rowSums(mouthing.12_24[, c("HM.child.oral", "HM.child.perioral")], na.rm = TRUE)
+mouthing.12_24[, "HM.mom"] <- rowSums(mouthing.12_24[, c("HM.mom.nd", "HM.mom.d.events")])
+mouthing.24_36[, "HM.child"] <- rowSums(mouthing.24_36[, c("HM.child.oral", "HM.child.perioral")], na.rm = TRUE)
+mouthing.24_36[, "HM.mom"] <- rowSums(mouthing.24_36[, c("HM.mom.nd", "HM.mom.d.events")])
+mouthing.36_48[, "HM.child"] <- rowSums(mouthing.36_48[, c("HM.child.oral", "HM.child.perioral")], na.rm = TRUE)
+mouthing.36_48[, "HM.mom"] <- rowSums(mouthing.36_48[, c("HM.mom.nd", "HM.mom.d.events")])
+
 
 # # I think I don't need the lines below. They were in case mouthing SM was /day before being put into mouthingTable, 
 # mouthing.f6 <- cbind(mouthing.f6, SM = sample(soil.direct.f6, nrow(mouthingTable)))
@@ -1684,9 +1710,10 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
 
   mouthingTable <- data.frame(get(paste("mouthing.", age.group,sep = "")))
   child.hand.surface.area.cm2 <- get(paste("C.hand.SA.WASHB.", age.group, ".mcstoc", sep = ""))
-  child.hand.mouth.oral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.oral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
-  child.hand.mouth.perioral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.perioral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
-  child.frac.dietary <- (get(paste("HM.child.d.", age.group, ".mcstoc", sep = "")))/ (get(paste("HM.child.d.", age.group, ".mcstoc", sep = "")) + get(paste("HM.child.nd.", age.group, ".mcstoc", sep = "")))
+  #child.hand.mouth.oral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.oral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  #child.hand.mouth.perioral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.perioral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  child.hand.mouth.frequency.events.day <- mcdata(mouthingTable[,"HM.child"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  child.fraction.dietary <- (get(paste("HM.child.d.", age.group, ".mcstoc", sep = "")))/ (get(paste("HM.child.d.", age.group, ".mcstoc", sep = "")) + get(paste("HM.child.nd.", age.group, ".mcstoc", sep = "")))
   mom.hand.mouth.nonfood.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.nd"], type = "V", nsv = ndvar())
   mom.feeding.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.d.events"], type = "V", nsv = ndvar())
   mom.hand.fraction.mouthed.oral <- get(paste("HF.ofmom.oral.", age.group, sep = ""))
@@ -1724,8 +1751,8 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
   soilDailyIngestion.summary <- summary(soil.evalmcmodel.plot, probs = c(0, 0.5, 0.95, 1), lim = c(0.025, 0.975))
   
   capture.output(soilDailyIngestion.summary, file = paste("C:/Users/Tareq/Box Sync/VO Soil/dailySoilIngestion.", age.group, ".txt"))
-  print(xtable(soilDailyIngestion.summary), file = paste("C:/Users/Tareq/Box Sync/VO Soil/dailySoilIngestion.", age.group, ".tex"))
-  latex(soilDailyIngestion.summary, file = paste("C:/Users/Tareq/Box Sync/VO Soil/dailySoilIngestion.latex.", age.group, ".tex"))
+  #print(xtable(soilDailyIngestion.summary), file = paste("C:/Users/Tareq/Box Sync/VO Soil/dailySoilIngestion.", age.group, ".tex"))
+  #latex(soilDailyIngestion.summary, file = paste("C:/Users/Tareq/Box Sync/VO Soil/dailySoilIngestion.latex.", age.group, ".tex"))
   
   
   # soil.mcmodel <- mcmodel({
