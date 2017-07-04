@@ -188,8 +188,8 @@ soil.C.load <- soil.C.load[!is.na(soil.C.load$soilOneHand.mg.child),]
 
 length(soil.C.load) #129
 summary(soil.C.load)
-#      Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-#   0.000   4.375  10.000  12.680  17.500 132.500    6737
+#   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0.000   4.375  10.620  13.180  17.500 132.500
 
 qplot(soil.C.load, geom = "histogram", binwidth = 1)
 
@@ -410,16 +410,20 @@ anth.soilMass.wide <- anth.soilMass.wide %>%
   mutate(soil.C.conc.7 = soilOneHand.mg.child.7 / SA.C.hand.contaminated.7, soil.C.conc.8 = soilOneHand.mg.child.8 / SA.C.hand.contaminated.8) #%>%
 soil.C.conc.long <- data.frame(combine(anth.soilMass.wide$soil.C.conc.7, anth.soilMass.wide$soil.C.conc.8))
 names(soil.C.conc.long) <- "soil.C.conc"
+soil.C.conc.long <- soil.C.conc.long[!is.na(soil.C.conc.long$soil.C.conc),]
 
-length(soil.C.conc.long) #68 observations
-summary(soil.C.conc.long$soil.C.conc) 
+length(soil.C.conc.long) #121 observations
+summary(soil.C.conc.long) 
 ## Good this makes sense! Comparable to construction workers, utility workers, and equipment operators in Holmes_1999 and farmers in Kissel_1995
 # MassDEP uses 1.5 mg/cm2 as conservative; lowest mentioned in Finley is Duggan 1985 with 0.12 mg/cm2 - mine are lower than this if divide by the ENTIRE SA of the hand, but this isn't what they do in their papers, they only divide by the CONTAMINATED surface area of the hands, which they assume is around 80%
-#     Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-#   0.000   0.107   0.235   0.306   0.394   3.462    6737
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 0.00000 0.08276 0.23930 0.29470 0.38930 3.30500 
 
-soil.C.empirical.36mo.conc <- mcstoc(rempiricalD, values = soil.C.conc.long$soil.C.conc, type="V", nsv = ndvar())
+# select only the values that are not NA
+soil.C.empirical.36mo.conc <- mcstoc(rempiricalD, values = soil.C.conc.long, type="V", nsv = ndvar())
 #soil.C.conc <- mcdata(sample(soil.C.conc.long$soil.C.conc, size=ndvar(), replace=TRUE),type="V")
+# node    mode  nsv nsu nva variate min  mean median max Nas type outm
+# 1    x numeric 1001   1   1       1   0 0.278  0.218 3.3   0    V each
 
 #######################################################################################################
  ### Figure out the soil adherence for younger children, who contact the soil more frequently ######
@@ -1123,49 +1127,11 @@ OMC.frac.time <- hand.config.time.SA %>%
   # summarise(OMC.frac.time.mean = mean(OMC.frac.time), OMC.frac.time.sd = sd(OMC.frac.time))
 # 50.3% of contacts are peri-oral!!! Thes observations included eating events so can't say eating is 100% oral, must also say that it is 53% perioral
 
-# Since there are so few data points, the mean and med can change a lot from sample to sample. Sample once and stick with that. 
-OMC.frac.time.boot <- sample(OMC.frac.time$OMC.frac.time, size = 1000, replace = TRUE)
-perioral.frac.mcstoc <- mcstoc(rempiricalD, values = OMC.frac.time.boot, type="V", nsv = ndvar())
-
-HM.child.nd.perioral.f6.mcstoc <- HM.child.nd.f6.mcstoc * perioral.frac.mcstoc
-HM.child.nd.perioral.6_12.mcstoc <- HM.child.nd.6_12.mcstoc * perioral.frac.mcstoc
-HM.child.nd.perioral.12_24.mcstoc <- HM.child.nd.12_24.mcstoc * perioral.frac.mcstoc
-HM.child.nd.perioral.24_36.mcstoc <- HM.child.nd.24_36.mcstoc * perioral.frac.mcstoc
-HM.child.nd.perioral.36_48.mcstoc <- HM.child.nd.36_48.mcstoc * perioral.frac.mcstoc
-
-HM.child.nd.oral.f6.mcstoc <- HM.child.nd.f6.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.nd.oral.6_12.mcstoc <- HM.child.nd.6_12.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.nd.oral.12_24.mcstoc <- HM.child.nd.12_24.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.nd.oral.24_36.mcstoc <- HM.child.nd.24_36.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.nd.oral.36_48.mcstoc <- HM.child.nd.36_48.mcstoc * (1-perioral.frac.mcstoc)
-
-HM.child.d.events.perioral.f6.mcstoc <- HM.child.d.events.f6.mcstoc * perioral.frac.mcstoc
-HM.child.d.events.perioral.6_12.mcstoc <- HM.child.d.events.6_12.mcstoc * perioral.frac.mcstoc
-HM.child.d.events.perioral.12_24.mcstoc <- HM.child.d.events.12_24.mcstoc * perioral.frac.mcstoc
-HM.child.d.events.perioral.24_36.mcstoc <- HM.child.d.events.24_36.mcstoc * perioral.frac.mcstoc
-HM.child.d.events.perioral.36_48.mcstoc <- HM.child.d.events.36_48.mcstoc * perioral.frac.mcstoc
-
-HM.child.d.events.oral.f6.mcstoc <- HM.child.d.events.f6.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.d.events.oral.6_12.mcstoc <- HM.child.d.events.6_12.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.d.events.oral.12_24.mcstoc <- HM.child.d.events.12_24.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.d.events.oral.24_36.mcstoc <- HM.child.d.events.24_36.mcstoc * (1-perioral.frac.mcstoc)
-HM.child.d.events.oral.36_48.mcstoc <- HM.child.d.events.36_48.mcstoc * (1-perioral.frac.mcstoc)
-
-
-# HM.child.perioral.f6.mcstoc <- HM.child.nd.f6.mcstoc * perioral.frac.mcstoc + HM.child.d.events.f6.mcstoc * perioral.frac.mcstoc
-# HM.child.perioral.6_12.mcstoc <- HM.child.nd.6_12.mcstoc * perioral.frac.mcstoc + HM.child.d.events.6_12.mcstoc * perioral.frac.mcstoc
-# HM.child.perioral.12_24.mcstoc <- HM.child.nd.12_24.mcstoc * perioral.frac.mcstoc + HM.child.d.events.12_24.mcstoc * perioral.frac.mcstoc
-# HM.child.perioral.24_36.mcstoc <- HM.child.nd.24_36.mcstoc * perioral.frac.mcstoc + HM.child.d.events.24_36.mcstoc * perioral.frac.mcstoc
-# HM.child.perioral.36_48.mcstoc <- HM.child.nd.36_48.mcstoc * perioral.frac.mcstoc + HM.child.d.events.36_48.mcstoc * perioral.frac.mcstoc
-# 
-# HM.child.oral.f6.mcstoc <- HM.child.nd.f6.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.f6.mcstoc * (1-perioral.frac.mcstoc)
-# HM.child.oral.6_12.mcstoc <- HM.child.nd.6_12.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.6_12.mcstoc * (1-perioral.frac.mcstoc)
-# HM.child.oral.12_24.mcstoc <- HM.child.nd.12_24.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.12_24.mcstoc * (1-perioral.frac.mcstoc)
-# HM.child.oral.24_36.mcstoc <- HM.child.nd.24_36.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.24_36.mcstoc * (1-perioral.frac.mcstoc)
-# HM.child.oral.36_48.mcstoc <- HM.child.nd.36_48.mcstoc * (1-perioral.frac.mcstoc) + HM.child.d.events.36_48.mcstoc * (1-perioral.frac.mcstoc)
-
-## This doesn't make any sense because need to sep into oral and perioral so that I can multiply by the appropriate transfer eff and this is not included in the calc of HM.child.anything.
-# HM.child.dietary.f6.mcstoc <- HM.child.d.events.f6.mcstoc * perioral.frac.mcstoc + HM.child.d.events.f6.mcstoc * (1-perioral frac.mcstoc) 
+# # Since there are so few data points, the mean and med can change a lot from sample to sample. Sample once and stick with that. 
+# OMC.frac.time.boot <- sample(OMC.frac.time$OMC.frac.time, size = 1000, replace = TRUE)
+# write.csv(OMC.frac.time.boot, "C:/Users/Tareq/Box Sync/VO R123/fraction of hand contacts that are perioral_based on Leckie 2000.csv")
+perioral.frac <- read.csv("C:/Users/Tareq/Box Sync/VO R123/fraction of hand contacts that are perioral_based on Leckie 2000.csv")
+oral.frac.mcstoc <- mcstoc(rempiricalD, values = (1 - perioral.frac[,2]), type="V", nsv = ndvar())
 
 ################## SEE Saliva extraction efficiency  = HMRE	Hand mouthing removal = transfer efficiency #######################
 
@@ -1534,7 +1500,7 @@ soil.survey %>%
 # 12-24 mo: oneday.recall: 50.0% --> 50.0/(24 - rnorm(ndvar(), 12.6, 1.3)) = 0.03968 # hr asleep mean = 12.6, sd = 1.3
 # 24-36 mo:   oneday.recall: 27.4% --> 27.4/(24 - rnorm(ndvar(), 12.0, 1.2)) = 0.022833  # hr asleep mean = 12.0, sd = 1.2
 
-## Don't do soil consumption by hour, just do by day
+## Percentage of children consuming soil PER DAY (not per hour)
 SM.consumerfrac.p1.f6 <- (8.3)/100 # Observational
 SM.consumerfrac.p1.6_12 <- (52.5)/100 # Survey
 SM.consumerfrac.p1.12_24 <- (50.0)/100 # Survey
@@ -1557,10 +1523,12 @@ SM.6_12 <- HM.SM[HM.SM$age.group %in% c(4) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_
 SM.6_12.mcstoc <- mcstoc(rempiricalD, values = SM.6_12, type="V", nsv = ndvar())
 SM.12_24 <- HM.SM[HM.SM$age.group %in% c(5) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
 SM.12_24.mcstoc <- mcstoc(rempiricalD, values = SM.12_24, type="V", nsv = ndvar())
-SM.24_36 <- HM.SM[HM.SM$age.group %in% c(6) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
-SM.24_36.mcstoc <- mcstoc(rempiricalD, values = SM.12_24, type="V", nsv = ndvar())
-SM.36_48 <- HM.SM[HM.SM$age.group %in% c(7) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"]
-SM.36_48.mcstoc <- mcstoc(rempiricalD, values = SM.12_24, type="V", nsv = ndvar())
+SM.24_36 <- HM.SM[HM.SM$age.group %in% c(6) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"] # There are only 2 values - not much of a variation
+SM.24_36.mcstoc <- mcstoc(rempiricalD, values = SM.24_36, type="V", nsv = ndvar())
+SM.36_48 <- HM.SM[HM.SM$age.group %in% c(7) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"] # There are 0 non-zero values
+# There are 0 non-zero values for age.group == 7 so use the (two) values from age.group == 6 instead
+SM.36_48 <- HM.SM[HM.SM$age.group %in% c(6) & !(is.na(HM.SM$SM_freq)) & HM.SM$SM_freq > 0, "SM_freq"] 
+SM.36_48.mcstoc <- mcstoc(rempiricalD, values = SM.36_48, type="V", nsv = ndvar())
 
 # In 2/24 (8.3%) observations of children <6 months old, children directly consumed soil with an average of 0.56 times/hr (sd = 0.14 events/hr). 
 # Among 123 observations of children 6-12 months old, there were 33 (26.8%) observations of children putting soil into their mouths  (mean = 1.16 events/hr, sd = 1.31 events/hr) 
@@ -1585,12 +1553,12 @@ awake.hr.36_48 <- 24 - mcstoc(rnorm, type = "V", mean = 12.0, sd = 1.2, rtrunc=T
 
 # types of mouthing (these are all in /hr and need to be converted to /day)
 mouthing.types <- c(
-  "HM.child.nd.oral",  # includes nd and d.events       ## in the output mouthingTable, child != child.nd + child.d because they are calc from diff sample draws
-  "HM.child.nd.perioral", # incldue nd and d.events
-  "HM.child.d.events.oral",  # includes nd and d.events       ## in the output mouthingTable, child != child.nd + child.d because they are calc from diff sample draws
-  "HM.child.d.events.perioral", # incldue nd and d.events
-  "HM.child.nd", # include oral and perioral
-  "HM.child.d.events", # includes oral and perioral
+  #"HM.child.nd.oral",  # includes nd and d.events       ## in the output mouthingTable, child != child.nd + child.d because they are calc from diff sample draws
+  #"HM.child.nd.perioral", # incldue nd and d.events
+  #"HM.child.d.events.oral",  # includes nd and d.events       ## in the output mouthingTable, child != child.nd + child.d because they are calc from diff sample draws
+  #"HM.child.d.events.perioral", # incldue nd and d.events
+  "HM.child.nd", # have not yet separated into oral and perioral
+  "HM.child.d.events", # have not yet separated into oral and perioral
   "HM.mom.nd", # caregiver non-dietary
   "HM.mom.d.events", # caregiver dietary
   "OM",
@@ -1629,24 +1597,24 @@ for(k in 1:length(age.group.names)){
 }
 
 # Child.oral and child.perioral already each = part of child.d.events + child.nd 
-mouthing.f6[, "HM.child.perioral"] <- rowSums(mouthing.f6[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
-mouthing.f6[, "HM.child.oral"] <- rowSums(mouthing.f6[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
+#mouthing.f6[, "HM.child.perioral"] <- rowSums(mouthing.f6[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
+#mouthing.f6[, "HM.child.oral"] <- rowSums(mouthing.f6[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
 mouthing.f6[, "HM.child"] <- rowSums(mouthing.f6[, c("HM.child.nd", "HM.child.d.events")], na.rm = TRUE)
 mouthing.f6[, "HM.mom"] <- rowSums(mouthing.f6[, c("HM.mom.nd", "HM.mom.d.events")])
-mouthing.6_12[, "HM.child.perioral"] <- rowSums(mouthing.6_12[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
-mouthing.6_12[, "HM.child.oral"] <- rowSums(mouthing.6_12[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
+#mouthing.6_12[, "HM.child.perioral"] <- rowSums(mouthing.6_12[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
+#mouthing.6_12[, "HM.child.oral"] <- rowSums(mouthing.6_12[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
 mouthing.6_12[, "HM.child"] <- rowSums(mouthing.6_12[, c("HM.child.nd", "HM.child.d.events")], na.rm = TRUE)
 mouthing.6_12[, "HM.mom"] <- rowSums(mouthing.6_12[, c("HM.mom.nd", "HM.mom.d.events")])
-mouthing.12_24[, "HM.child.perioral"] <- rowSums(mouthing.12_24[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
-mouthing.12_24[, "HM.child.oral"] <- rowSums(mouthing.12_24[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
+#mouthing.12_24[, "HM.child.perioral"] <- rowSums(mouthing.12_24[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
+#mouthing.12_24[, "HM.child.oral"] <- rowSums(mouthing.12_24[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
 mouthing.12_24[, "HM.child"] <- rowSums(mouthing.12_24[, c("HM.child.nd", "HM.child.d.events")], na.rm = TRUE)
 mouthing.12_24[, "HM.mom"] <- rowSums(mouthing.12_24[, c("HM.mom.nd", "HM.mom.d.events")])
-mouthing.24_36[, "HM.child.perioral"] <- rowSums(mouthing.24_36[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
-mouthing.24_36[, "HM.child.oral"] <- rowSums(mouthing.24_36[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
+#mouthing.24_36[, "HM.child.perioral"] <- rowSums(mouthing.24_36[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
+#mouthing.24_36[, "HM.child.oral"] <- rowSums(mouthing.24_36[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
 mouthing.24_36[, "HM.child"] <- rowSums(mouthing.24_36[, c("HM.child.nd", "HM.child.d.events")], na.rm = TRUE)
 mouthing.24_36[, "HM.mom"] <- rowSums(mouthing.24_36[, c("HM.mom.nd", "HM.mom.d.events")])
-mouthing.36_48[, "HM.child.perioral"] <- rowSums(mouthing.36_48[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
-mouthing.36_48[, "HM.child.oral"] <- rowSums(mouthing.36_48[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
+#mouthing.36_48[, "HM.child.perioral"] <- rowSums(mouthing.36_48[, c("HM.child.nd.perioral", "HM.child.d.events.perioral")], na.rm = TRUE)
+#mouthing.36_48[, "HM.child.oral"] <- rowSums(mouthing.36_48[, c("HM.child.nd.oral", "HM.child.d.events.oral")], na.rm = TRUE)
 mouthing.36_48[, "HM.child"] <- rowSums(mouthing.36_48[, c("HM.child.nd", "HM.child.d.events")], na.rm = TRUE)
 mouthing.36_48[, "HM.mom"] <- rowSums(mouthing.36_48[, c("HM.mom.nd", "HM.mom.d.events")])
 
@@ -1694,13 +1662,11 @@ SM.fracfreq.36_48 <- mcprobtree(c(1 - SM.consumerfrac.p1.36_48, SM.consumerfrac.
 # As no direct soil consumption was observed among children 24-36 months old, 
 # their estimated soil ingestion rate would not increase from the inclusion of direct soil ingest in the model. 
 
-soil.direct.f6 <-  SM.fracfreq.f6 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 12 mg
-soil.direct.6_12 <-  SM.fracfreq.6_12 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 210 mg
-soil.direct.12_24 <- SM.fracfreq.12_24 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 170 mg
-soil.direct.24_36 <-  SM.fracfreq.24_36 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 95 mg
-soil.direct.36_48 <-  SM.fracfreq.36_48 * SM.ingested.amt.mcstoc # mg # as of 25 May 2017 - mean 95.3 mg
-
-
+soil.direct.f6 <-  SM.fracfreq.f6 * SM.ingested.amt.mcstoc # mg # as of 4 July 2017 - mean 10.3 mg, med = 0
+soil.direct.6_12 <-  SM.fracfreq.6_12 * SM.ingested.amt.mcstoc # mg # as of 4 July 2017 - mean 222 mg, med = 131
+soil.direct.12_24 <- SM.fracfreq.12_24 * SM.ingested.amt.mcstoc # mg # as of 4 July 2017 - mean 179 mg, med = 0
+soil.direct.24_36 <-  SM.fracfreq.24_36 * SM.ingested.amt.mcstoc # mg # as of 4 July 2017 - mean 48.4 mg, med = 0
+soil.direct.36_48 <-  SM.fracfreq.36_48 * SM.ingested.amt.mcstoc # mg # as of 4 July 2017 - mean 46.0 mg, med = 0
 
 ########## Eval the mc model ###########
 # parameter.names <- c("child.hand.soil.concentration.mg.cm2", "child.hand.surface.area.cm2", 
@@ -1723,6 +1689,7 @@ soil.direct.36_48 <-  SM.fracfreq.36_48 * SM.ingested.amt.mcstoc # mg # as of 25
 
 child.hand.soil.load.mg <- soil.C.load.mcstoc
 child.hand.soil.concentration.mg.cm2 <- soil.C.conc
+hand.mouth.fraction.oral <- oral.frac.mcstoc
 # child.hand.mouth.frequency.events.hr
 # child.hand.surface.area.cm2
 child.hand.fraction.mouthed.oral <- HF.child.oral.mcstoc
@@ -1752,12 +1719,12 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
 
   mouthingTable <- data.frame(get(paste("mouthing.", age.group,sep = "")))
   child.hand.surface.area.cm2 <- get(paste("C.hand.SA.WASHB.", age.group, ".mcstoc", sep = ""))
-  child.hand.mouth.oral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.oral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
-  child.hand.mouth.perioral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.perioral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  # child.hand.mouth.oral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.oral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  # child.hand.mouth.perioral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.perioral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
   child.hand.mouth.nonfood.frequency.events.day <- mcdata(mouthingTable[,"HM.child.nd"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
   child.feeding.frequency.events.day <- mcdata(mouthingTable[,"HM.child.d.events"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
-  child.hand.mouth.frequency.events.day <- mcdata(mouthingTable[,"HM.child"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
-  child.hand.fraction.dietary <- child.feeding.frequency.events.day/(child.hand.mouth.nonfood.frequency.events.day + child.feeding.frequency.events.day)
+  # child.hand.mouth.frequency.events.day <- mcdata(mouthingTable[,"HM.child"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  # child.hand.fraction.dietary <- child.feeding.frequency.events.day/(child.hand.mouth.nonfood.frequency.events.day + child.feeding.frequency.events.day)
   # child.hand.fraction.dietary <- (get(paste("HM.child.d.events.", age.group, ".mcstoc", sep = "")))/ (get(paste("HM.child.d.events.", age.group, ".mcstoc", sep = "")) + get(paste("HM.child.nd.", age.group, ".mcstoc", sep = "")))
   mom.hand.mouth.nonfood.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.nd"], type = "V", nsv = ndvar())
   mom.feeding.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.d.events"], type = "V", nsv = ndvar())
@@ -1771,11 +1738,20 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
   
   soil.mcmodel.plot <- mcmodel({
     
-    child.hand.oral.soil.day <- (child.hand.soil.concentration.mg.cm2 * child.hand.surface.area.cm2 * child.hand.fraction.mouthed.oral * child.hand.mouth.oral.frequency.events.day * saliva.removal.efficiency)
-    child.hand.perioral.soil.day <- (child.hand.soil.concentration.mg.cm2 * child.hand.surface.area.cm2 * child.hand.fraction.mouthed.perioral * child.hand.mouth.perioral.frequency.events.day * saliva.removal.efficiency)
-    child.hand.soil.day <- child.hand.oral.soil.day + child.hand.perioral.soil.day
-    child.hand.nondietary.soil.day <- child.hand.soil.day * (1 - child.hand.fraction.dietary)
-    child.hand.dietary.soil.day <- child.hand.soil.day * child.hand.fraction.dietary
+    # child.hand.mouth.oral.frequency.events.day <- (child.hand.mouth.nonfood.frequency.events.day + child.feeding.frequency.events.day) * (1 - oral.frac.mcstoc)
+    # child.hand.mouth.perioral.frequency.events.day <- (child.hand.mouth.nonfood.frequency.events.day + child.feeding.frequency.events.day) * oral.frac.mcstoc
+    # child.hand.oral.soil.day <- (child.hand.soil.concentration.mg.cm2 * child.hand.surface.area.cm2 * child.hand.fraction.mouthed.oral * child.hand.mouth.oral.frequency.events.day * saliva.removal.efficiency)
+    # child.hand.perioral.soil.day <- (child.hand.soil.concentration.mg.cm2 * child.hand.surface.area.cm2 * child.hand.fraction.mouthed.perioral * child.hand.mouth.perioral.frequency.events.day * saliva.removal.efficiency)
+    # child.hand.soil.day <- child.hand.oral.soil.day + child.hand.perioral.soil.day
+    child.hand.nondietary.soil.day <- (child.hand.soil.concentration.mg.cm2 * child.hand.surface.area.cm2 * 
+                                         ((child.hand.fraction.mouthed.oral * child.hand.mouth.nonfood.frequency.events.day * hand.mouth.fraction.oral) + 
+                                         (child.hand.fraction.mouthed.perioral * child.hand.mouth.nonfood.frequency.events.day * (1-hand.mouth.fraction.oral))) * saliva.removal.efficiency)
+    child.hand.dietary.soil.day <- (child.hand.soil.concentration.mg.cm2 * child.hand.surface.area.cm2 * 
+                                      ((child.hand.fraction.mouthed.oral * child.feeding.frequency.events.day * hand.mouth.fraction.oral) + 
+                                         (child.hand.fraction.mouthed.perioral * child.feeding.frequency.events.day * (1-hand.mouth.fraction.oral))) * saliva.removal.efficiency)
+    # child.hand.nondietary.soil.day <- child.hand.soil.day * (1 - child.hand.fraction.dietary)
+    # child.hand.dietary.soil.day <- child.hand.soil.day * child.hand.fraction.dietary
+    
     mom.hand.nondietary.soil.day <- ((mom.hand.soil.load.mg / mom.hand.surface.area.cm2) * (mom.hand.surface.area.cm2 * mom.hand.fraction.mouthed.perioral) * mom.hand.mouth.nonfood.frequency.events.day) * saliva.removal.efficiency
     mom.hand.dietary.soil.day <- ((mom.hand.soil.load.mg / mom.hand.surface.area.cm2) * (mom.hand.surface.area.cm2 * mom.hand.fraction.mouthed.oral) * mom.feeding.frequency.events.day) * saliva.removal.efficiency
     mom.hand.soil.day <- mom.hand.nondietary.soil.day + mom.hand.dietary.soil.day
@@ -1784,7 +1760,7 @@ soil.ingestion.results <- function(age.group, title){ # title = "\n Soil ingesti
     # amt.soil.ingested.mg.day <- (child.hand.oral.soil.day + child.hand.perioral.soil.day + mom.hand.oral.soil.day + mom.hand.perioral.soil.day + child.obj.soil.day + child.direct.soil.day)
     amt.soil.ingested.mg.day <- (child.hand.nondietary.soil.day + child.hand.dietary.soil.day + mom.hand.dietary.soil.day + mom.hand.nondietary.soil.day + child.obj.soil.day + child.direct.soil.day)
     
-    mc(child.hand.soil.load.mg, child.hand.surface.area.cm2, child.hand.mouth.nonfood.frequency.events.day, child.feeding.frequency.events.day, child.hand.fraction.mouthed.perioral, child.hand.fraction.mouthed.oral,  #child.hand.mouth.frequency.events.day, child.hand.fraction.dietary
+    mc(child.hand.soil.load.mg, child.hand.surface.area.cm2, child.hand.mouth.nonfood.frequency.events.day, child.feeding.frequency.events.day, child.hand.fraction.mouthed.perioral, child.hand.fraction.mouthed.oral, hand.mouth.fraction.oral,  #child.hand.mouth.frequency.events.day, child.hand.fraction.dietary
        mom.hand.soil.load.mg, mom.hand.surface.area.cm2, mom.hand.mouth.nonfood.frequency.events.day, mom.feeding.frequency.events.day, mom.hand.fraction.mouthed.perioral, mom.hand.fraction.mouthed.oral, 
        obj.soil.concentration, child.obj.mouth.frequency.events.day, obj.SA.mouthed, saliva.removal.efficiency,
        soil.directly.ingested.mg, child.ingested.soil.frequency.events.day, #hours.awake, 
@@ -1870,16 +1846,14 @@ age.groups <- c("f6", "6_12", "12_24", "24_36")
 
 # age-independent parameters
 parameters1 <- c("child.hand.soil.concentration.mg.cm2", "child.hand.fraction.mouthed.oral", "child.hand.fraction.mouthed.perioral", 
-                 "mom.hand.soil.load.mg", "mom.hand.surface.area.cm2", "saliva.removal.efficiency", 
+                 "hand.mouth.fraction.oral", "mom.hand.soil.load.mg", "mom.hand.surface.area.cm2", "saliva.removal.efficiency", 
                  "obj.soil.concentration", "obj.SA.mouthed", "soil.directly.ingested.mg") 
 # Params that affect the parameters listed but not explicitly in the eq to det amt ingested: "child.hand.soil.load.mg", 
 # also "mom.hand.surface.area.cm2", (in the eq but when set to a single value, division by SA gets canceled out by multiplication by SA - doesn't happen when using dist because the divisor and multiplier are diff values), but need to include so can set at median value and get mom.hand.nondietary.soil.day and mom.hand.dietary.soil.day
 
 # age-dependent parameters
-parameters2 <- c("child.hand.surface.area.cm2", "child.hand.mouth.oral.frequency.events.day", "child.hand.mouth.perioral.frequency.events.day", # I don't need these in the sens output (they will be  since they don't directly affect soil ingestion) but do need to include them so they vary, because they set chichild.hand.soil.day.p50, which sets child.nondietary and child.dietary
-                 "child.hand.mouth.nonfood.frequency.events.day", "child.feeding.frequency.events.day", "child.hand.mouth.frequency.events.day", 
-                 "child.hand.fraction.dietary", 
-                 "mom.hand.mouth.nonfood.frequency.events.day", "mom.feeding.frequency.events.day", "mom.hand.fraction.mouthed.perioral", "mom.hand.fraction.mouthed.oral", 
+parameters2 <- c("child.hand.surface.area.cm2", "child.hand.mouth.nonfood.frequency.events.day", "child.feeding.frequency.events.day", 
+                  "mom.hand.mouth.nonfood.frequency.events.day", "mom.feeding.frequency.events.day", "mom.hand.fraction.mouthed.perioral", "mom.hand.fraction.mouthed.oral", 
                  "child.obj.mouth.frequency.events.day", "child.ingested.soil.frequency.events.day")
 
 parameters <- c(parameters1, parameters2)
@@ -1890,8 +1864,9 @@ sens.output <- data.frame(parameter = character(), age.group = character(), p25 
 
 for(age.group in age.groups){
   # Assign all parameters their distributions
-  child.hand.soil.load.mg <- soil.C.load.mcstoc
+  # child.hand.soil.load.mg <- soil.C.load.mcstoc
   child.hand.soil.concentration.mg.cm2 <- soil.C.conc
+  hand.mouth.fraction.oral <- oral.frac.mcstoc
   child.hand.fraction.mouthed.oral <- HF.child.oral.mcstoc
   child.hand.fraction.mouthed.perioral <- HF.child.perioral.mcstoc
   mom.hand.soil.load.mg <- soil.M.load.mcstoc
@@ -1902,12 +1877,12 @@ for(age.group in age.groups){
   soil.directly.ingested.mg <- SM.ingested.amt.mcstoc
   
   child.hand.surface.area.cm2 <- get(paste("C.hand.SA.WASHB.", age.group, ".mcstoc", sep = ""))
-  child.hand.mouth.oral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.oral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
-  child.hand.mouth.perioral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.perioral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  #child.hand.mouth.oral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.oral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  #child.hand.mouth.perioral.frequency.events.day <- mcdata(mouthingTable[,"HM.child.perioral"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
   child.hand.mouth.nonfood.frequency.events.day <- mcdata(mouthingTable[,"HM.child.nd"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
   child.feeding.frequency.events.day <- mcdata(mouthingTable[,"HM.child.d.events"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
-  child.hand.mouth.frequency.events.day <- mcdata(mouthingTable[,"HM.child"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
-  child.hand.fraction.dietary <- child.feeding.frequency.events.day/(child.hand.mouth.nonfood.frequency.events.day + child.feeding.frequency.events.day)
+  #child.hand.mouth.frequency.events.day <- mcdata(mouthingTable[,"HM.child"], type = "V", nsv = ndvar())  ## This data is already selected from a dist, so use the actual data with mcdata rather than creating a distribution using rempiricalD
+  # child.hand.fraction.dietary <- child.feeding.frequency.events.day/(child.hand.mouth.nonfood.frequency.events.day + child.feeding.frequency.events.day)
   # child.hand.fraction.dietary <- (get(paste("HM.child.d.events.", age.group, ".mcstoc", sep = "")))/ (get(paste("HM.child.d.events.", age.group, ".mcstoc", sep = "")) + get(paste("HM.child.nd.", age.group, ".mcstoc", sep = "")))
   mom.hand.mouth.nonfood.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.nd"], type = "V", nsv = ndvar())
   mom.feeding.frequency.events.day <- mcdata(mouthingTable[,"HM.mom.d.events"], type = "V", nsv = ndvar())
@@ -1925,13 +1900,12 @@ for(age.group in age.groups){
   }
   
   # Calculate soil ingested based on median values for all parameters
-  child.hand.oral.soil.day.p50 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.oral.p * child.hand.mouth.oral.frequency.events.day.p * saliva.removal.efficiency.p)
-  child.hand.perioral.soil.day.p50 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.perioral.p * child.hand.mouth.perioral.frequency.events.day.p * saliva.removal.efficiency.p)
-  child.hand.soil.day.p50 <- child.hand.oral.soil.day.p50 + child.hand.perioral.soil.day.p50
-  child.hand.nondietary.soil.day.p50 <- child.hand.soil.day.p50 * child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)
-  child.hand.dietary.soil.day.p50 <- child.hand.soil.day.p50 * (1 - (child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)))
-  #child.hand.nondietary.soil.day.p50 <- child.hand.soil.day.p50 * (1 - child.hand.fraction.dietary.p)
-  #child.hand.dietary.soil.day.p50 <- child.hand.soil.day.p50 * child.hand.fraction.dietary.p
+  child.hand.nondietary.soil.day.p50 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                       ((child.hand.fraction.mouthed.oral.p * child.hand.mouth.nonfood.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                          (child.hand.fraction.mouthed.perioral.p * child.hand.mouth.nonfood.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
+  child.hand.dietary.soil.day.p50 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                    ((child.hand.fraction.mouthed.oral.p * child.feeding.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                       (child.hand.fraction.mouthed.perioral.p * child.feeding.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
   mom.hand.nondietary.soil.day.p50 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.perioral.p) * mom.hand.mouth.nonfood.frequency.events.day.p) * saliva.removal.efficiency.p
   mom.hand.dietary.soil.day.p50 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.oral.p) * mom.feeding.frequency.events.day.p) * saliva.removal.efficiency.p
   mom.hand.soil.day.p50 <- mom.hand.nondietary.soil.day.p50 + mom.hand.dietary.soil.day.p50
@@ -1939,35 +1913,6 @@ for(age.group in age.groups){
   child.direct.soil.day.p50 <- soil.directly.ingested.mg.p * child.ingested.soil.frequency.events.day.p
   amt.soil.ingested.mg.day.p50 <- (child.hand.nondietary.soil.day.p50 + child.hand.dietary.soil.day.p50 + mom.hand.dietary.soil.day.p50 + mom.hand.nondietary.soil.day.p50 + child.obj.soil.day.p50 + child.direct.soil.day.p50)
   p50 <- amt.soil.ingested.mg.day.p50
-  
-  
-  
-  # # At 50th percentile
-  # > child.feeding.frequency.events.day.p
-  # [1] 46.4
-  # > child.hand.mouth.nonfood.frequency.events.day.p
-  # [1] 112.4
-  # > child.hand.soil.day.p50
-  # [1] 199.3101
-  # > child.hand.nondietary.soil.day.p50
-  # [1] 58.23669
-  # > child.hand.dietary.soil.day.p50
-  # [1] 141.0734
-  # > amt.soil.ingested.mg.day.p50
-  # [1] 258.618
-  
-  # > child.feeding.frequency.events.day.p
-  # [1] 46.4
-  # > child.hand.mouth.nonfood.frequency.events.day.p
-  # [1] 71.2
-  # > child.hand.soil.day.p2.5
-  # [1] 199.3101
-  # > child.hand.nondietary.soil.day.p2.5
-  # [1] 78.63934
-  # > child.hand.dietary.soil.day.p2.5
-  # [1] 120.6707
-  # > amt.soil.ingested.mg.day.p2.5
-  # [1] 258.618
   
   # Set ONE parameter to p25, calc amt ingested, then set to p75 and calc amt ingested
   for(parameter in parameters){
@@ -1978,13 +1923,19 @@ for(age.group in age.groups){
     assign(paste(parameter, ".p", sep = ""), param.p2.5)
     
     # Recalc outcomes will all at median except for the one paramter that was changed
-    child.hand.oral.soil.day.p2.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.oral.p * child.hand.mouth.oral.frequency.events.day.p * saliva.removal.efficiency.p)
-    child.hand.perioral.soil.day.p2.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.perioral.p * child.hand.mouth.perioral.frequency.events.day.p * saliva.removal.efficiency.p)
-    child.hand.soil.day.p2.5 <- child.hand.oral.soil.day.p2.5 + child.hand.perioral.soil.day.p2.5
-    child.hand.nondietary.soil.day.p2.5 <- child.hand.soil.day.p2.5 * child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)
-    child.hand.dietary.soil.day.p2.5 <- child.hand.soil.day.p2.5 * (1 - (child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)))
-    # child.hand.nondietary.soil.day.p2.5 <- child.hand.soil.day.p2.5 * (1 - child.hand.fraction.dietary.p)
-    # child.hand.dietary.soil.day.p2.5 <- child.hand.soil.day.p2.5 * child.hand.fraction.dietary.p
+    # child.hand.oral.soil.day.p2.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.oral.p * child.hand.mouth.oral.frequency.events.day.p * saliva.removal.efficiency.p)
+    # child.hand.perioral.soil.day.p2.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.perioral.p * child.hand.mouth.perioral.frequency.events.day.p * saliva.removal.efficiency.p)
+    # child.hand.soil.day.p2.5 <- child.hand.oral.soil.day.p2.5 + child.hand.perioral.soil.day.p2.5
+    # child.hand.nondietary.soil.day.p2.5 <- child.hand.soil.day.p2.5 * child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)
+    # child.hand.dietary.soil.day.p2.5 <- child.hand.soil.day.p2.5 * (1 - (child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)))
+    # # child.hand.nondietary.soil.day.p2.5 <- child.hand.soil.day.p2.5 * (1 - child.hand.fraction.dietary.p)
+    # # child.hand.dietary.soil.day.p2.5 <- child.hand.soil.day.p2.5 * child.hand.fraction.dietary.p
+    child.hand.nondietary.soil.day.p2.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                            ((child.hand.fraction.mouthed.oral.p * child.hand.mouth.nonfood.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                               (child.hand.fraction.mouthed.perioral.p * child.hand.mouth.nonfood.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
+    child.hand.dietary.soil.day.p2.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                          ((child.hand.fraction.mouthed.oral.p * child.feeding.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                             (child.hand.fraction.mouthed.perioral.p * child.feeding.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
     mom.hand.nondietary.soil.day.p2.5 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.perioral.p) * mom.hand.mouth.nonfood.frequency.events.day.p) * saliva.removal.efficiency.p
     mom.hand.dietary.soil.day.p2.5 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.oral.p) * mom.feeding.frequency.events.day.p) * saliva.removal.efficiency.p
     mom.hand.soil.day.p2.5 <- mom.hand.nondietary.soil.day.p2.5 + mom.hand.dietary.soil.day.p2.5
@@ -1998,13 +1949,19 @@ for(age.group in age.groups){
     assign(paste(parameter, ".p", sep = ""), param.p25)
     
     # Recalc outcomes with all at median except for the one paramter that was changed
-    child.hand.oral.soil.day.p25 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.oral.p * child.hand.mouth.oral.frequency.events.day.p * saliva.removal.efficiency.p)
-    child.hand.perioral.soil.day.p25 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.perioral.p * child.hand.mouth.perioral.frequency.events.day.p * saliva.removal.efficiency.p)
-    child.hand.soil.day.p25 <- child.hand.oral.soil.day.p25 + child.hand.perioral.soil.day.p25
-    child.hand.nondietary.soil.day.p25 <- child.hand.soil.day.p25 * child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)
-    child.hand.dietary.soil.day.p25 <- child.hand.soil.day.p25 * (1 - (child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)))
-    # child.hand.nondietary.soil.day.p25 <- child.hand.soil.day.p25 * (1 - child.hand.fraction.dietary.p)
-    # child.hand.dietary.soil.day.p25 <- child.hand.soil.day.p25 * child.hand.fraction.dietary.p
+    # child.hand.oral.soil.day.p25 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.oral.p * child.hand.mouth.oral.frequency.events.day.p * saliva.removal.efficiency.p)
+    # child.hand.perioral.soil.day.p25 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.perioral.p * child.hand.mouth.perioral.frequency.events.day.p * saliva.removal.efficiency.p)
+    # child.hand.soil.day.p25 <- child.hand.oral.soil.day.p25 + child.hand.perioral.soil.day.p25
+    # child.hand.nondietary.soil.day.p25 <- child.hand.soil.day.p25 * child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)
+    # child.hand.dietary.soil.day.p25 <- child.hand.soil.day.p25 * (1 - (child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)))
+    # # child.hand.nondietary.soil.day.p25 <- child.hand.soil.day.p25 * (1 - child.hand.fraction.dietary.p)
+    # # child.hand.dietary.soil.day.p25 <- child.hand.soil.day.p25 * child.hand.fraction.dietary.p
+    child.hand.nondietary.soil.day.p25 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                            ((child.hand.fraction.mouthed.oral.p * child.hand.mouth.nonfood.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                               (child.hand.fraction.mouthed.perioral.p * child.hand.mouth.nonfood.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
+    child.hand.dietary.soil.day.p25 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                          ((child.hand.fraction.mouthed.oral.p * child.feeding.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                             (child.hand.fraction.mouthed.perioral.p * child.feeding.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
     mom.hand.nondietary.soil.day.p25 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.perioral.p) * mom.hand.mouth.nonfood.frequency.events.day.p) * saliva.removal.efficiency.p
     mom.hand.dietary.soil.day.p25 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.oral.p) * mom.feeding.frequency.events.day.p) * saliva.removal.efficiency.p
     mom.hand.soil.day.p25 <- mom.hand.nondietary.soil.day.p25 + mom.hand.dietary.soil.day.p25
@@ -2018,13 +1975,19 @@ for(age.group in age.groups){
     assign(paste(parameter, ".p", sep = ""), param.p75)
     
     # Recalc outcomes with all at median except for the one paramter that was changed
-    child.hand.oral.soil.day.p75 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.oral.p * child.hand.mouth.oral.frequency.events.day.p * saliva.removal.efficiency.p)
-    child.hand.perioral.soil.day.p75 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.perioral.p * child.hand.mouth.perioral.frequency.events.day.p * saliva.removal.efficiency.p)
-    child.hand.soil.day.p75 <- child.hand.oral.soil.day.p75 + child.hand.perioral.soil.day.p75
-    child.hand.nondietary.soil.day.p75 <- child.hand.soil.day.p75 * child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)
-    child.hand.dietary.soil.day.p75 <- child.hand.soil.day.p75 * (1 - (child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)))
-    # child.hand.nondietary.soil.day.p75 <- child.hand.soil.day.p75 * (1 - child.hand.fraction.dietary.p)
-    # child.hand.dietary.soil.day.p75 <- child.hand.soil.day.p75 * child.hand.fraction.dietary.p
+    # child.hand.oral.soil.day.p75 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.oral.p * child.hand.mouth.oral.frequency.events.day.p * saliva.removal.efficiency.p)
+    # child.hand.perioral.soil.day.p75 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.perioral.p * child.hand.mouth.perioral.frequency.events.day.p * saliva.removal.efficiency.p)
+    # child.hand.soil.day.p75 <- child.hand.oral.soil.day.p75 + child.hand.perioral.soil.day.p75
+    # child.hand.nondietary.soil.day.p75 <- child.hand.soil.day.p75 * child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)
+    # child.hand.dietary.soil.day.p75 <- child.hand.soil.day.p75 * (1 - (child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)))
+    # # child.hand.nondietary.soil.day.p75 <- child.hand.soil.day.p75 * (1 - child.hand.fraction.dietary.p)
+    # # child.hand.dietary.soil.day.p75 <- child.hand.soil.day.p75 * child.hand.fraction.dietary.p
+    child.hand.nondietary.soil.day.p75 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                            ((child.hand.fraction.mouthed.oral.p * child.hand.mouth.nonfood.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                               (child.hand.fraction.mouthed.perioral.p * child.hand.mouth.nonfood.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
+    child.hand.dietary.soil.day.p75 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                          ((child.hand.fraction.mouthed.oral.p * child.feeding.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                             (child.hand.fraction.mouthed.perioral.p * child.feeding.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
     mom.hand.nondietary.soil.day.p75 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.perioral.p) * mom.hand.mouth.nonfood.frequency.events.day.p) * saliva.removal.efficiency.p
     mom.hand.dietary.soil.day.p75 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.oral.p) * mom.feeding.frequency.events.day.p) * saliva.removal.efficiency.p
     mom.hand.soil.day.p75 <- mom.hand.nondietary.soil.day.p75 + mom.hand.dietary.soil.day.p75
@@ -2038,13 +2001,19 @@ for(age.group in age.groups){
     assign(paste(parameter, ".p", sep = ""), param.p97.5)
     
     # Recalc outcomes will all at median except for the one paramter that was changed
-    child.hand.oral.soil.day.p97.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.oral.p * child.hand.mouth.oral.frequency.events.day.p * saliva.removal.efficiency.p)
-    child.hand.perioral.soil.day.p97.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.perioral.p * child.hand.mouth.perioral.frequency.events.day.p * saliva.removal.efficiency.p)
-    child.hand.soil.day.p97.5 <- child.hand.oral.soil.day.p97.5 + child.hand.perioral.soil.day.p97.5
-    child.hand.nondietary.soil.day.p97.5 <- child.hand.soil.day.p97.5 * child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)
-    child.hand.dietary.soil.day.p97.5 <- child.hand.soil.day.p97.5 * (1 - (child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)))
-    # child.hand.nondietary.soil.day.p97.5 <- child.hand.soil.day.p97.5 * (1 - child.hand.fraction.dietary.p)
-    # child.hand.dietary.soil.day.p97.5 <- child.hand.soil.day.p97.5 * child.hand.fraction.dietary.p
+    # child.hand.oral.soil.day.p97.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.oral.p * child.hand.mouth.oral.frequency.events.day.p * saliva.removal.efficiency.p)
+    # child.hand.perioral.soil.day.p97.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * child.hand.fraction.mouthed.perioral.p * child.hand.mouth.perioral.frequency.events.day.p * saliva.removal.efficiency.p)
+    # child.hand.soil.day.p97.5 <- child.hand.oral.soil.day.p97.5 + child.hand.perioral.soil.day.p97.5
+    # child.hand.nondietary.soil.day.p97.5 <- child.hand.soil.day.p97.5 * child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)
+    # child.hand.dietary.soil.day.p97.5 <- child.hand.soil.day.p97.5 * (1 - (child.feeding.frequency.events.day.p/(child.hand.mouth.nonfood.frequency.events.day.p + child.feeding.frequency.events.day.p)))
+    # # child.hand.nondietary.soil.day.p97.5 <- child.hand.soil.day.p97.5 * (1 - child.hand.fraction.dietary.p)
+    # # child.hand.dietary.soil.day.p97.5 <- child.hand.soil.day.p97.5 * child.hand.fraction.dietary.p
+    child.hand.nondietary.soil.day.p97.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                            ((child.hand.fraction.mouthed.oral.p * child.hand.mouth.nonfood.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                               (child.hand.fraction.mouthed.perioral.p * child.hand.mouth.nonfood.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
+    child.hand.dietary.soil.day.p97.5 <- (child.hand.soil.concentration.mg.cm2.p * child.hand.surface.area.cm2.p * 
+                                          ((child.hand.fraction.mouthed.oral.p * child.feeding.frequency.events.day.p * hand.mouth.fraction.oral.p) + 
+                                             (child.hand.fraction.mouthed.perioral.p * child.feeding.frequency.events.day.p * (1-hand.mouth.fraction.oral.p))) * saliva.removal.efficiency.p)
     mom.hand.nondietary.soil.day.p97.5 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.perioral.p) * mom.hand.mouth.nonfood.frequency.events.day.p) * saliva.removal.efficiency.p
     mom.hand.dietary.soil.day.p97.5 <- ((mom.hand.soil.load.mg.p / mom.hand.surface.area.cm2.p) * (mom.hand.surface.area.cm2.p * mom.hand.fraction.mouthed.oral.p) * mom.feeding.frequency.events.day.p) * saliva.removal.efficiency.p
     mom.hand.soil.day.p97.5 <- mom.hand.nondietary.soil.day.p97.5 + mom.hand.dietary.soil.day.p97.5
@@ -2145,48 +2114,6 @@ t.test(c(rlnorm(24,2.15,1.64), rlnorm(123,2.34, 1.58)), c(rlnorm(54, 3.44, 1.77)
 t.test(c(rlnorm(24,2.15,1.64), rlnorm(123,2.34, 1.58), rlnorm(54, 3.44, 1.77)), c(rlnorm(5, 4.57, 1.34))) #p = 0.36
 
 
-
-
-#### Why is the rate so high among children > 24 months? Due to high HM? #### What if we use the HM rate for younger kids?
-### Children > 24 months old ###
-child.hand.surface.area.cm2 <- C.hand.SA.WASHB.24_36.mcstoc
-child.hand.mouth.frequency.events.day <- HM.child.24_36.mcstoc
-mom.hand.mouth.nonfood.frequency.events.day <- HM.other.nd.24_36.mcstoc
-mom.feeding.frequency.events.day <- HM.other.d.24_36.mcstoc
-#mom.hand.fraction.mouthed <- HF.ofmom.24_36
-#hours.awake <- awake.day.24_36
-
-# child.hand.mouth.frequency.events.day <- HM.child.6_12.mcstoc
-mom.hand.fraction.mouthed <- HF.ofmom.6_12
-
-
-soil.test_24_36 <- mcmodel({ 
-  amt.soil.ingested.mg.day <- ((((child.hand.soil.concentration.mg.cm2 * child.hand.surface.area.cm2) * child.hand.mouth.frequency.events.day * child.hand.fraction.mouthed) + 
-                                  ((mom.hand.soil.load.mg / mom.hand.surface.area.cm2) * mom.hand.surface.area.cm2 * (mom.hand.mouth.nonfood.frequency.events.day + mom.feeding.frequency.events.day) * mom.hand.fraction.mouthed))  * saliva.removal.efficiency) 
-  mc(child.hand.soil.concentration.mg.cm2, child.hand.surface.area.cm2, child.hand.mouth.frequency.events.day, child.hand.fraction.mouthed, mom.hand.soil.load.mg , mom.hand.surface.area.cm2,
-     mom.hand.mouth.nonfood.frequency.events.day, mom.feeding.frequency.events.day, mom.hand.fraction.mouthed, saliva.removal.efficiency, hours.awake, amt.soil.ingested.mg.day) #sleep.day.24_36,
-})
-eatSoil_24_36 <- evalmcmod(soil.test_24_36, nsv=ndvar(), nsu=ndunc(), seed=seed)
-summary(eatSoil_24_36)
-tor.eatSoil_24_36  <- tornado(eatSoil_24_36, use = "pairwise.complete.obs") #  I'd prefer to use complete.obs rather than pairwise (I think) but this doesn't work. method = "spearman", lim = c(0.025, 0.975)
-plot(tor.eatSoil_24_36 )
-print(tor.eatSoil_24_36 )
-
-# If we replace HM.child.24_36.mcstoc with HM.child.12_24.mcstoc
-# amt.soil.ingested.mg.day :
-#         mean  sd    Min  2.5%   25%  50%   75% 97.5%  Max  nsv Na's
-# median 102.7 216 0.0893 0.846 11.37 37.4 105.6   587 2785 1001  426
-# mean   103.9 238 0.1072 0.862 11.45 37.8 105.7   592 3428 1001  426
-# 2.5%    86.6 150 0.0216 0.610  9.03 31.5  90.3   456 1294 1001  392
-# 97.5%  125.6 394 0.2523 1.252 13.80 44.4 119.0   761 7315 1001  45
-
-# If we replace HM.child.24_36.mcstoc with HM.child.6_12.mcstoc
-# amt.soil.ingested.mg.day :
-#        mean    sd    Min  2.5%  25%  50%  75% 97.5%  Max  nsv Na's
-# median 47.0 113.7 0.0691 0.495 4.22 13.4 40.5   300 1533 1001  426
-# mean   47.4 123.9 0.0795 0.504 4.23 13.2 41.1   307 1812 1001  426
-# 2.5%   36.7  74.5 0.0168 0.358 3.49 11.0 33.5   205  694 1001  392
-# 97.5%  59.4 248.9 0.1789 0.721 4.97 15.1 49.6   423 5268 1001  452
 
 
 # What's the influence of the fraction of mom's hand mouthed?
